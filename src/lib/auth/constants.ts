@@ -1,0 +1,12 @@
+export const SESSION_COOKIE = "session";
+export const LOGIN_PATH = "/";
+export const HOME_PATH = "/inicio";
+export const ONBOARDING_PATH = "/cadastro";
+export const TEACHER_SIGNUP_PATH = "/cadastro/professor";
+export const STUDENT_SIGNUP_PATH = "/cadastro/aluno";
+export const PROFILE_PATH = "/perfil";
+export const PROFILE_EDIT_PATH = "/perfil/editar";
+export const STUDENTS_PATH = "/alunos";
+export const INVITE_PATH = "/convite";
+export const NEXT_PARAM = "next";
+export const PROTECTED_PATHS = [HOME_PATH, ONBOARDING_PATH, PROFILE_PATH, STUDENTS_PATH, INVITE_PATH];
