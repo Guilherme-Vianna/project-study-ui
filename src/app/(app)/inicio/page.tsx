@@ -7,11 +7,13 @@ import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
 import { CompleteProfileCard } from "@/components/profile/complete-profile-card";
 import { Alert } from "@/components/ui/alert";
-import { BooksIcon, UsersIcon } from "@/components/ui/icons";
+import { BooksIcon, CalendarIcon, ClipboardIcon, UsersIcon } from "@/components/ui/icons";
 import { profileOf } from "@/lib/api/account";
 import { listMyInvites, listMyStudents, listMyTeachers, personName } from "@/lib/api/enrollments";
+import { listMyExercises } from "@/lib/api/exercises";
+import { listMyPlans } from "@/lib/api/plans";
 import { listMySubjects } from "@/lib/api/subjects";
-import { HOME_PATH, ONBOARDING_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
+import { EXERCISES_PATH, HOME_PATH, ONBOARDING_PATH, PLANS_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
 import { loadCurrentAccount } from "@/lib/auth/current-account";
 import { initialsOf } from "@/lib/people";
 import { isRole, ROLE_COPY } from "@/lib/profile/roles";
@@ -95,11 +97,11 @@ function plural(count: number, one: string, many: string) {
 async function TeacherOverview() {
   let data;
   try {
-    data = await Promise.all([listMyStudents(), listMyInvites(), listMySubjects()]);
+    data = await Promise.all([listMyStudents(), listMyInvites(), listMySubjects(), listMyExercises(), listMyPlans()]);
   } catch {
     return <ApiUnavailable retryHref={HOME_PATH} />;
   }
-  const [students, invites, subjects] = data;
+  const [students, invites, subjects, exercises, plans] = data;
   const activeInvites = invites.filter((invite) => invite.is_active).length;
 
   return (
@@ -116,6 +118,17 @@ async function TeacherOverview() {
         action={students.length === 0 ? "Convidar alunos" : "Ver alunos"}
       />
       <OverviewCard
+        icon={<CalendarIcon className="size-5" />}
+        title="Planos de estudo"
+        summary={
+          plans.length === 0
+            ? "Monte um plano com metas semanais e exercícios e atribua aos seus alunos."
+            : plural(plans.length, "plano criado", "planos criados")
+        }
+        href={PLANS_PATH}
+        action={plans.length === 0 ? "Criar plano" : "Ver planos"}
+      />
+      <OverviewCard
         icon={<BooksIcon className="size-5" />}
         title="Assuntos"
         summary={
@@ -125,6 +138,17 @@ async function TeacherOverview() {
         }
         href={SUBJECTS_PATH}
         action={subjects.length === 0 ? "Cadastrar assuntos" : "Ver assuntos"}
+      />
+      <OverviewCard
+        icon={<ClipboardIcon className="size-5" />}
+        title="Exercícios"
+        summary={
+          exercises.length === 0
+            ? "Crie questões de múltipla escolha ou de resposta aberta para seus planos de estudo."
+            : plural(exercises.length, "exercício cadastrado", "exercícios cadastrados")
+        }
+        href={EXERCISES_PATH}
+        action={exercises.length === 0 ? "Criar exercício" : "Ver exercícios"}
       />
     </div>
   );

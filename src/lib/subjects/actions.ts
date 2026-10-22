@@ -8,7 +8,9 @@ import { LOGIN_PATH } from "@/lib/auth/constants";
 import { getSessionUser } from "@/lib/auth/session";
 import { duplicateNameMessage, toSubjectPayload, validateSubject, type SubjectFieldErrors, type SubjectValues } from "./validation";
 
-export type SaveSubjectResult = { ok: true } | { ok: false; fieldErrors: SubjectFieldErrors; formError: string | null };
+export type SaveSubjectResult =
+  | { ok: true; subject: { id: string; name: string } }
+  | { ok: false; fieldErrors: SubjectFieldErrors; formError: string | null };
 export type DeleteSubjectResult = { ok: true } | { ok: false; error: string };
 
 const UNAVAILABLE = "Não foi possível salvar agora. Seus dados continuam aqui; tente de novo em instantes.";
@@ -23,9 +25,9 @@ export async function saveSubjectAction(subjectId: string | null, values: Subjec
   if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors, formError: null };
 
   const payload = toSubjectPayload(values);
+  let saved;
   try {
-    if (subjectId) await updateSubject(subjectId, payload);
-    else await createSubject(payload);
+    saved = subjectId ? await updateSubject(subjectId, payload) : await createSubject(payload);
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 401) redirect(LOGIN_PATH);
@@ -40,7 +42,7 @@ export async function saveSubjectAction(subjectId: string | null, values: Subjec
     return { ok: false, fieldErrors: {}, formError: UNAVAILABLE };
   }
   refresh();
-  return { ok: true };
+  return { ok: true, subject: { id: saved.id, name: saved.name } };
 }
 
 export async function deleteSubjectAction(subjectId: string): Promise<DeleteSubjectResult> {

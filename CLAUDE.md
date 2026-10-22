@@ -66,9 +66,39 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
   description ≤ 2000 (empty → null). Delete 409 = subject used by a study plan.
 - Teacher home shows overview cards (students, subjects); new teacher features add a card and a `MainNav` item.
 
+## Exercises
+
+- Teacher `/exercicios` (list: search title/statement, type chips, subject select incl. "Sem assunto", recent/A–Z),
+  `/exercicios/novo` and `/exercicios/[id]` (full-page `ExerciseEditor`, sticky save bar, discard confirmation and
+  `beforeunload` guard when dirty). Draft model, payload mapping and validation live in `lib/exercises/`.
+- API rules mirrored: title ≤ 200, texts ≤ 10000, hours 0 < h ≤ 168 (typed as "0,5"), ≤ 20 subjects, ≤ 20 images;
+  multiple choice = 2–10 options, each with text or image, ≥ 1 correct, no expected answer; open answer = no options.
+  Saving uses `PUT` (full replace). Delete 409 = used by a study plan or has progress.
+- Images: browser → `POST /api/images` (route handler re-checks type/size and forwards multipart with the bearer
+  token) → API `POST /images`; referenced by id with placement `statement` | `attachment` or on an option.
+  Images uploaded in the editor and then removed/discarded are deleted best-effort (`DELETE /api/images/[id]`).
+  Render with `next/image` `unoptimized` (`ImageThumb`); `url` may be null when storage is not configured.
+
+## Study plans
+
+- Teacher `/planos` (cards with weekly goal, subjects, exercises and active student count), `/planos/novo`,
+  `/planos/[id]` (assign to students, per-student progress this week + overall, end assignment, delete if never
+  assigned) and `/planos/[id]/editar`. Draft/payload/validation in `lib/plans/`.
+- `PlanEditor` must let teachers create what they forgot without leaving: "Novo assunto" opens `SubjectFormDialog`,
+  "Criar exercício" opens `ExerciseEditor` in `embedded` mode inside an `xl` locked `Modal`
+  (`saveExerciseAction(..., { stay: true })` returns the exercise). Created items join the plan immediately.
+- It also suggests adding subjects used by the plan's exercises, shows totals (weekly goal, allocated hours,
+  estimated weeks) and pre-selects the plan's subjects for new exercises.
+- API rules mirrored: title ≤ 200, description ≤ 5000, ≤ 50 subjects (weekly 0 < h ≤ 168, sum ≤ 168, optional
+  weekdays), ≤ 200 ordered exercises; empty allocated hours = exercise estimate, required when it has none.
+  `PUT` replaces the plan; editing affects every assigned student (the editor says so).
+- Assigning: "Atribuir plano" opens a modal with a searchable, multi-select student list; it disables students already following another plan (computed
+  from every plan's active assignments); 409 explains it. Ending keeps progress.
+
 ## App shell
 
-- Authenticated pages: full-width sticky header (logo + role `MainNav` left, `AccountMenu` right: avatar initials, name, role;
+- Authenticated pages: full-width sticky header (logo + role `MainNav` left, `AccountMenu` right; below `md` the nav
+  drops to a scrollable second row: avatar initials, name, role;
   menu with "Meu perfil" and "Sair"), content in `max-w-7xl`, left-aligned. Never center the whole app in a narrow column.
 - Every page starts with `PageHeader` (optional back link, eyebrow, `h1`, description, actions on the right).
 - Forms stay at `max-w-2xl` inside a `rounded-3xl` card; lists and dashboards may use the full width.
@@ -84,17 +114,21 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 
 ```
 src/
-  app/            page.tsx (login, "/"), api/session/route.ts
+  app/            page.tsx (login, "/"), api/session/route.ts, api/images/ (upload proxy + delete)
   app/(app)/      authenticated: layout (AppHeader, SessionRefresher), inicio/, cadastro/ (+ professor/, aluno/),
-                  perfil/ (+ editar/), alunos/, assuntos/, convite/[token]/
+                  perfil/ (+ editar/), alunos/, assuntos/, exercicios/ (+ novo/, [id]/),
+                  planos/ (+ novo/, [id]/, [id]/editar/),
+                  convite/[token]/
   components/ui/  button, text-field, text-area-field, alert, spinner, copy-button, modal, confirm-dialog,
                   icons (reuse before creating new ones)
   components/     app/ (header, account menu, page header, loading, API error), auth/, brand/,
                   profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/,
-                  subjects/
-  lib/            auth/ (constants, session, current account, errors), api/ (client + fetchAll, account, profiles, enrollments, subjects),
+                  subjects/, exercises/ (editor, board, subject picker, image upload/thumb),
+                  plans/ (editor, exercise picker, weekday picker, assign button + student picker modal, actions)
+  lib/            auth/ (constants, session, current account, errors), api/ (client + fetchAll, account, profiles, enrollments, subjects, exercises, plans),
                   profile/ (fields, roles, actions, action state), invites/ (actions, links, validity), subjects/ (actions,
-                  validation), people, firebase/
+                  validation), exercises/ (model, validation, actions, upload, from-api, teacher-guard),
+                  plans/ (model, validation, actions, from-api), people, firebase/
   proxy.ts
 tests/            vitest setup and stubs; test files live next to the code as *.test.ts(x)
 ```
@@ -117,7 +151,8 @@ Palette (60-30-10): 60% backgrounds, 30% text/structure, 10% action colors. Use 
 
 - Shapes: pill buttons and inputs (`rounded-full`, `h-12`), cards `rounded-3xl`, alerts `rounded-2xl`.
 - Typography: Geist; one `h1` per page; headings `font-semibold tracking-tight`; body text `text-base`.
-- One primary button per view; secondary actions use `variant="secondary"` or `variant="link"`.
+- One primary button per view; secondary actions use `variant="secondary"` or `variant="link"`. `Button` is
+  full-width for primary/danger unless `block={false}`; never override width with conflicting classes.
 - Light theme only for now. Layout must work at 375px with a 16px gutter (`px-4`) and no horizontal scroll.
 - Decorative visuals are `aria-hidden` and hidden on small screens when they push the task below the fold.
 

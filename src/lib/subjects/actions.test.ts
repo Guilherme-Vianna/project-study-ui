@@ -26,12 +26,17 @@ describe("subject actions", () => {
   });
 
   it("creates a subject and refreshes the page", async () => {
-    expect(await saveSubjectAction(null, { name: " Inglês ", description: "" })).toEqual({ ok: true });
+    api.createSubject.mockResolvedValue({ id: "s9", name: "Inglês" });
+    expect(await saveSubjectAction(null, { name: " Inglês ", description: "" })).toEqual({
+      ok: true,
+      subject: { id: "s9", name: "Inglês" },
+    });
     expect(api.createSubject).toHaveBeenCalledWith({ name: "Inglês", description: null });
     expect(refresh).toHaveBeenCalled();
   });
 
   it("updates an existing subject", async () => {
+    api.updateSubject.mockResolvedValue({ id: "s1", name: "Inglês" });
     await saveSubjectAction("s1", { name: "Inglês", description: "Verbos" });
     expect(api.updateSubject).toHaveBeenCalledWith("s1", { name: "Inglês", description: "Verbos" });
   });

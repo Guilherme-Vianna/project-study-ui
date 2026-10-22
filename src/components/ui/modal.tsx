@@ -8,10 +8,11 @@ type ModalProps = {
   title: string;
   description?: ReactNode;
   locked?: boolean;
+  size?: "md" | "xl";
   children: ReactNode;
 };
 
-export function Modal({ open, onClose, title, description, locked = false, children }: ModalProps) {
+export function Modal({ open, onClose, title, description, locked = false, size = "md", children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -35,7 +36,9 @@ export function Modal({ open, onClose, title, description, locked = false, child
       onClick={(event) => {
         if (event.target === event.currentTarget && !locked) onClose();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-3xl border border-border bg-surface p-0 text-ink shadow-2xl backdrop:bg-ink/40"
+      className={`m-auto w-[calc(100%-2rem)] rounded-3xl border border-border p-0 text-ink shadow-2xl backdrop:bg-ink/40 ${
+        size === "xl" ? "max-h-[92vh] max-w-3xl overflow-y-auto bg-canvas" : "max-w-md bg-surface"
+      }`}
     >
       {open && (
         <div className="flex flex-col gap-4 p-6">

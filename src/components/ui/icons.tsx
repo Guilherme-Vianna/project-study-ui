@@ -52,3 +52,21 @@ export function TrashIcon({ className = "size-5" }: IconProps) {
     </svg>
   );
 }
+
+export function ClipboardIcon({ className = "size-6" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4V3h6v1M9 10l1.5 1.5L13 9M9 16h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function CalendarIcon({ className = "size-6" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4M8 14h3M8 17h6" strokeLinecap="round" />
+    </svg>
+  );
+}

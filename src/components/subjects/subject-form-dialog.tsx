@@ -21,7 +21,7 @@ type SubjectFormDialogProps = {
   draft: SubjectDraft | null;
   existingNames: readonly string[];
   onClose: () => void;
-  onSaved: (name: string, created: boolean) => void;
+  onSaved: (subject: { id: string; name: string }, created: boolean) => void;
 };
 
 export function SubjectFormDialog({ draft, existingNames, onClose, onSaved }: SubjectFormDialogProps) {
@@ -65,7 +65,7 @@ function SubjectForm({ draft, existingNames, onClose, onSaved }: SubjectFormDial
     startTransition(async () => {
       const result = await saveSubjectAction(draft.id, values);
       if (result.ok) {
-        onSaved(values.name.trim(), !draft.id);
+        onSaved(result.subject, !draft.id);
         return;
       }
       setErrors(result.fieldErrors);

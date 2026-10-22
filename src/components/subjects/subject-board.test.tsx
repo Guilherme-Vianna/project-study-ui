@@ -26,7 +26,7 @@ describe("SubjectBoard", () => {
   });
 
   it("creates a subject and confirms it", async () => {
-    actions.saveSubjectAction.mockResolvedValue({ ok: true });
+    actions.saveSubjectAction.mockImplementation(async (id: string | null, values: { name: string }) => ({ ok: true, subject: { id: id ?? "new", name: values.name } }));
     render(<SubjectBoard subjects={subjects} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Novo assunto" }));
@@ -53,7 +53,7 @@ describe("SubjectBoard", () => {
   });
 
   it("edits a subject keeping its own name valid", async () => {
-    actions.saveSubjectAction.mockResolvedValue({ ok: true });
+    actions.saveSubjectAction.mockImplementation(async (id: string | null, values: { name: string }) => ({ ok: true, subject: { id: id ?? "new", name: values.name } }));
     render(<SubjectBoard subjects={subjects} />);
     await userEvent.click(screen.getByRole("button", { name: "Editar Inglês" }));
 

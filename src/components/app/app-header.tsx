@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Logo } from "@/components/brand/logo";
 import { profileOf } from "@/lib/api/account";
-import { HOME_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
+import { EXERCISES_PATH, HOME_PATH, PLANS_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
 import { loadCurrentAccount } from "@/lib/auth/current-account";
 import { ROLE_COPY, type Role } from "@/lib/profile/roles";
 import { AccountMenu } from "./account-menu";
@@ -13,6 +13,8 @@ const navigation: Record<Role, NavItem[]> = {
   teacher: [
     { href: HOME_PATH, label: "Início" },
     { href: STUDENTS_PATH, label: "Alunos" },
+    { href: PLANS_PATH, label: "Planos" },
+    { href: EXERCISES_PATH, label: "Exercícios" },
     { href: SUBJECTS_PATH, label: "Assuntos" },
   ],
   student: [{ href: HOME_PATH, label: "Início" }],
@@ -21,19 +23,17 @@ const navigation: Record<Role, NavItem[]> = {
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-surface/90 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-4 sm:gap-8">
-          <Link
-            href={HOME_PATH}
-            aria-label="Project Study, ir para o início"
-            className="shrink-0 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
-          >
-            <Logo compactOnMobile />
-          </Link>
-          <Suspense>
-            <HeaderNav />
-          </Suspense>
-        </div>
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-8 px-4 sm:px-6 md:h-16 md:flex-nowrap lg:px-8">
+        <Link
+          href={HOME_PATH}
+          aria-label="Project Study, ir para o início"
+          className="flex h-14 shrink-0 items-center rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:h-auto"
+        >
+          <Logo />
+        </Link>
+        <Suspense>
+          <HeaderNav />
+        </Suspense>
         <Suspense fallback={<span aria-hidden="true" className="size-9 animate-pulse rounded-full bg-border" />}>
           <HeaderAccount />
         </Suspense>

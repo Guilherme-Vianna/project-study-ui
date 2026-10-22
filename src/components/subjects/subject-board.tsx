@@ -31,7 +31,7 @@ export function SubjectBoard({ subjects }: { subjects: SubjectItem[] }) {
     setDraft({ id: null, name, description: "" });
   }
 
-  function handleSaved(name: string, created: boolean) {
+  function handleSaved({ name }: { name: string }, created: boolean) {
     setDraft(null);
     setNotice(created ? `Assunto “${name}” criado.` : `Assunto “${name}” atualizado.`);
   }
@@ -114,7 +114,7 @@ export function SubjectBoard({ subjects }: { subjects: SubjectItem[] }) {
                 <Button variant="secondary" onClick={() => setQuery("")}>
                   Limpar busca
                 </Button>
-                <Button className="w-auto" icon={<PlusIcon />} onClick={() => openCreate(query.trim())}>
+                <Button block={false} icon={<PlusIcon />} onClick={() => openCreate(query.trim())}>
                   Criar “{query.trim()}”
                 </Button>
               </div>
