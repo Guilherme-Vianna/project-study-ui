@@ -49,7 +49,7 @@ export function InviteCreator({ origin, invitePathPrefix }: { origin: string; in
               </label>
             ))}
           </div>
-          <p className="mt-2 text-sm text-muted">Qualquer aluno com o link pode entrar na sua turma enquanto ele estiver ativo.</p>
+          <p className="mt-2 text-sm text-muted">Qualquer pessoa com o link pode se tornar seu aluno enquanto ele estiver ativo.</p>
         </fieldset>
         <Button type="submit" loading={pending} loadingLabel="Gerando link…">
           Gerar link de convite
@@ -78,7 +78,7 @@ export function InviteCreator({ origin, invitePathPrefix }: { origin: string; in
             {canShare && (
               <button
                 type="button"
-                onClick={() => navigator.share({ title: "Convite para minha turma", url: link }).catch(() => undefined)}
+                onClick={() => navigator.share({ title: "Convite para estudar comigo", url: link }).catch(() => undefined)}
                 className="inline-flex h-10 cursor-pointer items-center rounded-full border border-border bg-surface px-4 text-sm font-medium text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 Compartilhar

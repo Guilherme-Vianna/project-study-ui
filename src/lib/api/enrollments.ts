@@ -1,13 +1,6 @@
 import "server-only";
-import { apiFetch } from "./client";
+import { apiFetch, fetchAll } from "./client";
 import type { Profile } from "./profiles";
-
-export type Page<T> = {
-  items: T[];
-  total: number;
-  offset: number;
-  limit: number;
-};
 
 export type Invite = {
   id: string;
@@ -30,8 +23,6 @@ export type InvitePreview = {
   expires_at: string | null;
 };
 
-const MAX_PAGE = 100;
-
 export function createInvite(expiresAt: string | null) {
   return apiFetch<Invite>("/teachers/me/invites", { method: "POST", json: { expires_at: expiresAt } });
 }
@@ -50,15 +41,6 @@ export function previewInvite(token: string) {
 
 export function acceptInvite(token: string) {
   return apiFetch<unknown>(`/invites/${encodeURIComponent(token)}/accept`, { method: "POST" });
-}
-
-async function fetchAll<T>(path: string): Promise<T[]> {
-  const items: T[] = [];
-  for (let offset = 0; ; offset += MAX_PAGE) {
-    const page = await apiFetch<Page<T>>(`${path}?limit=${MAX_PAGE}&offset=${offset}`);
-    items.push(...page.items);
-    if (page.items.length < MAX_PAGE || items.length >= page.total) return items;
-  }
 }
 
 export function listMyStudents() {

@@ -19,12 +19,12 @@ describe("StudentList", () => {
 
   it("shows an empty state that points to invites", () => {
     render(<StudentList students={[]} />);
-    expect(screen.getByText("Nenhum aluno na turma ainda")).toBeInTheDocument();
+    expect(screen.getByText("Você ainda não tem alunos")).toBeInTheDocument();
   });
 
   it("filters by search and lets the user clear filters when nothing matches", async () => {
     render(<StudentList students={students} />);
-    expect(screen.getByText("2 alunos na turma")).toBeInTheDocument();
+    expect(screen.getByText("2 alunos")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("Buscar aluno"), "agata");
     await waitFor(() => expect(screen.getByText("Mostrando 1 de 2 alunos")).toBeInTheDocument());
@@ -46,26 +46,26 @@ describe("StudentList", () => {
   });
 
   it("asks for confirmation before removing and shows API errors in the dialog", async () => {
-    removeStudentAction.mockResolvedValueOnce({ ok: false, error: "Este aluno já não está na sua turma." });
+    removeStudentAction.mockResolvedValueOnce({ ok: false, error: "Este aluno já não está na sua lista." });
     render(<StudentList students={students} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Remover Bruno Lima da turma" }));
-    const dialog = screen.getByRole("dialog", { name: "Remover Bruno Lima da turma?" });
+    await userEvent.click(screen.getByRole("button", { name: "Remover Bruno Lima" }));
+    const dialog = screen.getByRole("dialog", { name: "Remover Bruno Lima dos seus alunos?" });
     expect(dialog).toHaveTextContent("A conta não é apagada");
     expect(removeStudentAction).not.toHaveBeenCalled();
 
-    await userEvent.click(within(dialog).getByRole("button", { name: "Remover da turma" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("já não está na sua turma");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remover aluno" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("já não está na sua lista");
     expect(removeStudentAction).toHaveBeenCalledWith("1");
 
     removeStudentAction.mockResolvedValueOnce({ ok: true });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Remover da turma" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Remover aluno" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("cancels removal without calling the API", async () => {
     render(<StudentList students={students} />);
-    await userEvent.click(screen.getByRole("button", { name: "Remover Bruno Lima da turma" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remover Bruno Lima" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(removeStudentAction).not.toHaveBeenCalled();

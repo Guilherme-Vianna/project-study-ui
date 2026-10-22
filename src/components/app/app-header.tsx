@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Logo } from "@/components/brand/logo";
 import { profileOf } from "@/lib/api/account";
-import { HOME_PATH, STUDENTS_PATH } from "@/lib/auth/constants";
+import { HOME_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
 import { loadCurrentAccount } from "@/lib/auth/current-account";
 import { ROLE_COPY, type Role } from "@/lib/profile/roles";
 import { AccountMenu } from "./account-menu";
@@ -13,6 +13,7 @@ const navigation: Record<Role, NavItem[]> = {
   teacher: [
     { href: HOME_PATH, label: "Início" },
     { href: STUDENTS_PATH, label: "Alunos" },
+    { href: SUBJECTS_PATH, label: "Assuntos" },
   ],
   student: [{ href: HOME_PATH, label: "Início" }],
 };

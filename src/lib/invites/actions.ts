@@ -55,7 +55,7 @@ export async function removeStudentAction(studentId: string): Promise<ActionResu
   try {
     await removeStudent(studentId);
   } catch (error) {
-    return { ok: false, error: failure(error, { 404: "Este aluno já não está na sua turma. Atualize a página." }) };
+    return { ok: false, error: failure(error, { 404: "Este aluno já não está na sua lista. Atualize a página." }) };
   }
   refresh();
   return { ok: true };
@@ -71,10 +71,10 @@ export async function acceptInviteAction(token: string): Promise<ActionResult> {
       error: failure(error, {
         403: "Crie seu perfil de aluno antes de aceitar o convite.",
         404: "Não encontramos este convite. Confira o link ou peça um novo ao professor.",
-        409: "Você já faz parte da turma deste professor.",
+        409: "Você já é aluno deste professor.",
         410: "Este convite expirou ou foi desativado. Peça um novo link ao seu professor.",
       }),
     };
   }
-  redirect(`${HOME_PATH}?turma=entrou`);
+  redirect(`${HOME_PATH}?convite=aceito`);
 }

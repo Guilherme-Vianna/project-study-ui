@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useId, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SearchIcon } from "@/components/ui/icons";
 import { removeStudentAction } from "@/lib/invites/actions";
 import { initialsOf } from "@/lib/people";
 import { filterStudents, type StudentFilter, type StudentItem, type StudentSort } from "./student-filters";
@@ -28,9 +29,9 @@ export function StudentList({ students }: { students: StudentItem[] }) {
   if (students.length === 0) {
     return (
       <div className="rounded-3xl border border-dashed border-border-strong/60 bg-surface p-8 text-center">
-        <p className="text-lg font-semibold text-ink">Nenhum aluno na turma ainda</p>
+        <p className="text-lg font-semibold text-ink">Você ainda não tem alunos</p>
         <p className="mx-auto mt-2 max-w-sm text-muted">
-          Gere um link de convite e envie para seus alunos. Quando eles aceitarem, aparecem aqui.
+          Gere um link de convite e envie para seus alunos. Quem aceitar aparece aqui.
         </p>
       </div>
     );
@@ -43,7 +44,7 @@ export function StudentList({ students }: { students: StudentItem[] }) {
           <label htmlFor={searchId} className="sr-only">
             Buscar aluno
           </label>
-          <SearchIcon />
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted" />
           <input
             id={searchId}
             type="search"
@@ -86,7 +87,7 @@ export function StudentList({ students }: { students: StudentItem[] }) {
       </div>
 
       <p aria-live="polite" className="text-sm text-muted">
-        {filtering ? `Mostrando ${visible.length} de ${students.length} alunos` : `${students.length} alunos na turma`}
+        {filtering ? `Mostrando ${visible.length} de ${students.length} alunos` : `${students.length} ${students.length === 1 ? "aluno" : "alunos"}`}
       </p>
 
       {visible.length === 0 ? (
@@ -131,21 +132,21 @@ export function StudentList({ students }: { students: StudentItem[] }) {
                 </div>
               </div>
               <ConfirmDialog
-                title={`Remover ${student.name} da turma?`}
+                title={`Remover ${student.name} dos seus alunos?`}
                 description={
                   <>
                     {student.name} deixa de ver seus planos de estudo e o plano ativo é encerrado. A conta não é apagada e
                     você pode convidar de novo depois.
                   </>
                 }
-                confirmLabel="Remover da turma"
+                confirmLabel="Remover aluno"
                 pendingLabel="Removendo…"
                 onConfirm={() => removeStudentAction(student.id)}
                 trigger={(open) => (
                   <button
                     type="button"
                     onClick={open}
-                    aria-label={`Remover ${student.name} da turma`}
+                    aria-label={`Remover ${student.name}`}
                     className="inline-flex h-10 cursor-pointer items-center self-start rounded-full px-4 text-sm font-medium text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:self-auto"
                   >
                     Remover
@@ -157,21 +158,5 @@ export function StudentList({ students }: { students: StudentItem[] }) {
         </ul>
       )}
     </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
-    </svg>
   );
 }

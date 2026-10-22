@@ -13,7 +13,7 @@ import { formatDate } from "@/lib/invites/validity";
 import { initialsOf } from "@/lib/people";
 
 export const metadata: Metadata = {
-  title: "Convite para a turma",
+  title: "Convite",
 };
 
 type InvitePageProps = {
@@ -52,7 +52,7 @@ async function InviteContent({ params, searchParams }: InvitePageProps) {
     if (status === 410) {
       return (
         <InviteProblem title="Este convite não vale mais">
-          O link expirou ou foi desativado pelo professor. Peça um novo link para entrar na turma.
+          O link expirou ou foi desativado pelo professor. Peça um novo link a quem te convidou.
         </InviteProblem>
       );
     }
@@ -74,7 +74,7 @@ async function InviteContent({ params, searchParams }: InvitePageProps) {
     <div className="rounded-3xl border border-border bg-surface p-6 text-center sm:p-10">
       {query.perfil === "criado" && (
         <div className="mb-6 text-left">
-          <Alert tone="success">Perfil de aluno criado! Agora é só confirmar a entrada na turma.</Alert>
+          <Alert tone="success">Perfil de aluno criado! Agora é só aceitar o convite.</Alert>
         </div>
       )}
       <span
@@ -83,13 +83,13 @@ async function InviteContent({ params, searchParams }: InvitePageProps) {
       >
         {initialsOf(teacherName)}
       </span>
-      <p className="mt-6 text-sm font-medium text-primary">Convite para a turma</p>
+      <p className="mt-6 text-sm font-medium text-primary">Convite de professor</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-        {teacherName} convidou você para a turma
+        {teacherName} convidou você para ser aluno
       </h1>
       <p className="mt-3 text-muted">
-        Ao entrar, você recebe os planos de estudo desta turma e pode acompanhar seu progresso junto com quem te
-        convidou.
+        Ao aceitar, você passa a receber os planos de estudo de quem te convidou e pode acompanhar seu progresso por
+        aqui.
         {preview.expires_at && ` Convite válido até ${formatDate(preview.expires_at)}.`}
       </p>
 
@@ -109,7 +109,7 @@ async function InviteContent({ params, searchParams }: InvitePageProps) {
         {role === "teacher" && (
           <div className="flex flex-col gap-4">
             <Alert tone="info">
-              Este convite é para alunos, e você está conectado com uma conta de professor. Para entrar na turma, saia e
+              Este convite é para alunos, e você está conectado com uma conta de professor. Para aceitar, saia e
               entre com a conta do aluno.
             </Alert>
             <Link href={HOME_PATH} className={`${linkButton} border border-border bg-surface text-ink hover:bg-canvas`}>

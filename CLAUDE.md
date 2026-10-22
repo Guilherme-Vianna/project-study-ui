@@ -46,9 +46,9 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 - Pass `today` from the server to client components; never call `new Date()` while rendering a client component.
 - `loadCurrentAccount` is wrapped in React `cache()`, so header and page share one `GET /me` per request.
 
-## Invites and class
+## Invites and students
 
-- Teacher `/alunos`: class list (all pages fetched, filtered client-side: accent-insensitive name/phone search,
+- Teacher `/alunos` ("Seus alunos", never "turma"): student list (all pages fetched, filtered client-side: accent-insensitive name/phone search,
   "Perfil incompleto" filter, A–Z/Z–A sort) + invite panel (validity 7/30 days or none, copy/share, revoke).
 - Invite links are built by the UI as `<origin>/convite/<token>` (`lib/invites/links.ts`), not from the API `url`.
 - `/convite/[token]`: preview (404 not found, 410 expired/revoked) → student accepts; no role → `/cadastro/aluno?convite=`
@@ -56,6 +56,15 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 - "Remover" ends the enrollment (`DELETE /teachers/me/students/{id}`), never deletes the account. Destructive actions
   always go through `ConfirmDialog` (native `<dialog>`), and mutations call `refresh()` from `next/cache`.
 - Student home lists their teachers (`GET /students/me/teachers`); teacher home summarizes the class.
+
+## Subjects
+
+- Teacher `/assuntos`: subjects are study topics (Trigonometria, Inglês…). Cards with search (name/description),
+  A–Z / recent sort, create/edit in a `Modal` form, delete via `ConfirmDialog`. Empty state offers suggestion chips;
+  "no results" offers to create the searched name.
+- API: name 1–100 chars, unique per teacher ignoring case (checked client-side too, 409 → name field error);
+  description ≤ 2000 (empty → null). Delete 409 = subject used by a study plan.
+- Teacher home shows overview cards (students, subjects); new teacher features add a card and a `MainNav` item.
 
 ## App shell
 
@@ -77,12 +86,15 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 src/
   app/            page.tsx (login, "/"), api/session/route.ts
   app/(app)/      authenticated: layout (AppHeader, SessionRefresher), inicio/, cadastro/ (+ professor/, aluno/),
-                  perfil/ (+ editar/), alunos/, convite/[token]/
-  components/ui/  button, text-field, alert, spinner, copy-button, confirm-dialog (reuse before creating new ones)
+                  perfil/ (+ editar/), alunos/, assuntos/, convite/[token]/
+  components/ui/  button, text-field, text-area-field, alert, spinner, copy-button, modal, confirm-dialog,
+                  icons (reuse before creating new ones)
   components/     app/ (header, account menu, page header, loading, API error), auth/, brand/,
-                  profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/
-  lib/            auth/ (constants, session, current account, errors), api/ (client, account, profiles, enrollments),
-                  profile/ (fields, roles, actions, action state), invites/ (actions, links, validity), people, firebase/
+                  profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/,
+                  subjects/
+  lib/            auth/ (constants, session, current account, errors), api/ (client + fetchAll, account, profiles, enrollments, subjects),
+                  profile/ (fields, roles, actions, action state), invites/ (actions, links, validity), subjects/ (actions,
+                  validation), people, firebase/
   proxy.ts
 tests/            vitest setup and stubs; test files live next to the code as *.test.ts(x)
 ```

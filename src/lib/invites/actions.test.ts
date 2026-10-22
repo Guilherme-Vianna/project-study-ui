@@ -84,11 +84,11 @@ describe("invite actions", () => {
 
   it("accepts an invite and opens the home page", async () => {
     api.acceptInvite.mockResolvedValue({});
-    expect(await redirectOf(acceptInviteAction("tok"))).toBe("/inicio?turma=entrou");
+    expect(await redirectOf(acceptInviteAction("tok"))).toBe("/inicio?convite=aceito");
   });
 
   it.each([
-    [409, /já faz parte/],
+    [409, /já é aluno/],
     [410, /expirou ou foi desativado/],
     [404, /Não encontramos/],
   ])("maps accept error %s to a helpful message", async (status, message) => {

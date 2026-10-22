@@ -20,8 +20,8 @@ export function AcceptInviteButton({ token }: { token: string }) {
   return (
     <div className="flex flex-col gap-4">
       {error && <Alert tone="error">{error}</Alert>}
-      <Button loading={pending} loadingLabel="Entrando na turma…" onClick={accept}>
-        Entrar na turma
+      <Button loading={pending} loadingLabel="Aceitando convite…" onClick={accept}>
+        Aceitar convite
       </Button>
     </div>
   );

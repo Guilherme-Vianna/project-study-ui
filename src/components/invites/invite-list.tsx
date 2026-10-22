@@ -37,7 +37,7 @@ export function InviteList({ invites }: { invites: InviteItem[] }) {
                 <CopyButton text={invite.link} />
                 <ConfirmDialog
                   title="Desativar este link?"
-                  description="Quem ainda não entrou na turma não vai conseguir usar este link. Alunos que já entraram continuam na turma."
+                  description="Ninguém mais vai conseguir usar este link. Quem já aceitou continua na sua lista de alunos."
                   confirmLabel="Desativar link"
                   pendingLabel="Desativando…"
                   onConfirm={() => revokeInviteAction(invite.id)}

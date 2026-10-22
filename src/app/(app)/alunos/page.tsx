@@ -8,6 +8,7 @@ import { InviteCreator } from "@/components/invites/invite-creator";
 import { InviteList, type InviteItem } from "@/components/invites/invite-list";
 import type { StudentItem } from "@/components/students/student-filters";
 import { StudentList } from "@/components/students/student-list";
+import { UsersIcon } from "@/components/ui/icons";
 import { listMyInvites, listMyStudents, personName, type Invite } from "@/lib/api/enrollments";
 import type { Profile } from "@/lib/api/profiles";
 import { HOME_PATH, INVITE_PATH, ONBOARDING_PATH, STUDENTS_PATH } from "@/lib/auth/constants";
@@ -25,9 +26,9 @@ export default function StudentsPage() {
     <>
       <PageHeader
         title="Alunos"
-        description="Convide alunos por link, encontre quem já está na turma e gerencie o acesso."
+        description="Convide alunos por link, encontre quem já estuda com você e gerencie o acesso."
       />
-      <Suspense fallback={<PageLoading label="Carregando sua turma…" />}>
+      <Suspense fallback={<PageLoading label="Carregando seus alunos…" />}>
         <StudentsContent />
       </Suspense>
     </>
@@ -77,8 +78,11 @@ async function StudentsContent() {
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
       <section aria-labelledby="class-title" className="flex flex-col gap-4">
-        <h2 id="class-title" className="text-xl font-semibold text-ink">
-          Sua turma
+        <h2 id="class-title" className="flex items-center gap-3 text-xl font-semibold text-ink">
+          <span className="flex size-10 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+            <UsersIcon className="size-5" />
+          </span>
+          Seus alunos
         </h2>
         <StudentList students={students.map(toStudentItem)} />
       </section>
