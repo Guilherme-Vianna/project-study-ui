@@ -119,6 +119,9 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 - Authenticated pages: full-width sticky header (logo + role `MainNav` left, `AccountMenu` right; below `md` the nav
   drops to a scrollable second row: avatar initials, name, role;
   menu with "Meu perfil" and "Sair"), content in `max-w-7xl`, left-aligned. Never center the whole app in a narrow column.
+- First-run tour (`ProductTour`, mounted next to `MainNav`): starts once on `/inicio` per account (seen flag in
+  `localStorage`, `lib/tour/steps.ts`), spotlights nav items via `data-tour` attributes, Escape/"Pular tour" skips.
+  Replay via "Ver tour do sistema" in `AccountMenu`. New nav items get a step in `TOUR_STEPS`.
 - Every page starts with `PageHeader` (optional back link, eyebrow, `h1`, description, actions on the right).
 - Forms stay at `max-w-2xl` inside a `rounded-3xl` card; lists and dashboards may use the full width.
 - Menus follow the ARIA menu pattern: `aria-haspopup`/`aria-expanded`, arrow keys, Escape returns focus, click outside closes.
@@ -140,14 +143,14 @@ src/
                   meu-plano/, praticar/ (+ [id]/), minhas-habilidades/, convite/[token]/
   components/ui/  button, text-field, text-area-field, alert, spinner, copy-button, modal, confirm-dialog,
                   icons (reuse before creating new ones)
-  components/     app/ (header, account menu, page header, loading, API error), auth/, brand/,
+  components/     app/ (header, account menu, product tour, page header, loading, API error), auth/, brand/,
                   profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/,
                   subjects/, exercises/ (editor, board, subject/skill pickers, image upload/thumb),
                   plans/ (editor, weekday picker, assign button + student picker modal, progress, actions),
                   attempts/ (parts, answer form, review form/filters), practice/, skills/
   lib/            auth/ (constants, session, current account, errors, student guard), api/ (client + fetchAll/queryString,
                   account, profiles, enrollments, subjects, exercises, plans, attempts, skills),
-                  profile/ (fields, roles, actions, action state), invites/ (actions, links, validity), subjects/ (actions,
+                  profile/ (fields, roles, actions, action state), tour/ (steps, seen flag), invites/ (actions, links, validity), subjects/ (actions,
                   validation), exercises/ (model, validation, actions, upload, from-api, teacher-guard),
                   plans/ (model, validation, actions, from-api, weeks), attempts/ (model, actions),
                   skills/ (model, actions, from-api), people, firebase/

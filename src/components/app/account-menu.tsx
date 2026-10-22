@@ -9,14 +9,16 @@ import { LOGIN_PATH, PROFILE_PATH } from "@/lib/auth/constants";
 import { destroyServerSession } from "@/lib/auth/client-session";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
 import { initialsOf } from "@/lib/people";
+import { ACCOUNT_TOUR_TARGET, startTour } from "@/lib/tour/steps";
 
 type AccountMenuProps = {
   name: string;
   email: string | null;
   roleLabel: string | null;
+  canReplayTour?: boolean;
 };
 
-export function AccountMenu({ name, email, roleLabel }: AccountMenuProps) {
+export function AccountMenu({ name, email, roleLabel, canReplayTour = false }: AccountMenuProps) {
   const router = useRouter();
   const menuId = useId();
   const [open, setOpen] = useState(false);
@@ -65,7 +67,7 @@ export function AccountMenu({ name, email, roleLabel }: AccountMenuProps) {
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} data-tour={ACCOUNT_TOUR_TARGET} className="relative">
       <button
         ref={buttonRef}
         type="button"
@@ -123,6 +125,20 @@ export function AccountMenu({ name, email, roleLabel }: AccountMenuProps) {
               <UserIcon />
               Meu perfil
             </Link>
+            {canReplayTour && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  close({ restoreFocus: false });
+                  startTour();
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-ink outline-none hover:bg-canvas focus-visible:bg-canvas"
+              >
+                <CompassIcon />
+                Ver tour do sistema
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
@@ -156,6 +172,15 @@ function UserIcon() {
     <svg viewBox="0 0 24 24" className="size-5 text-muted" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CompassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5 text-muted" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z" strokeLinejoin="round" />
     </svg>
   );
 }

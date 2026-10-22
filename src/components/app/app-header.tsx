@@ -19,6 +19,7 @@ import { loadCurrentAccount } from "@/lib/auth/current-account";
 import { ROLE_COPY, type Role } from "@/lib/profile/roles";
 import { AccountMenu } from "./account-menu";
 import { MainNav, type NavItem } from "./main-nav";
+import { ProductTour } from "./product-tour";
 
 const navigation: Record<Role, NavItem[]> = {
   teacher: [
@@ -63,7 +64,12 @@ export function AppHeader() {
 async function HeaderNav() {
   const { account } = await loadCurrentAccount();
   if (!account?.role) return null;
-  return <MainNav items={navigation[account.role]} />;
+  return (
+    <>
+      <MainNav items={navigation[account.role]} />
+      <ProductTour accountId={account.uid} role={account.role} />
+    </>
+  );
 }
 
 async function HeaderAccount() {
@@ -79,6 +85,7 @@ async function HeaderAccount() {
       name={name}
       email={account.email ?? user.email}
       roleLabel={account.role ? ROLE_COPY[account.role].label : null}
+      canReplayTour={Boolean(account.role)}
     />
   );
 }

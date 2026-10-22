@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { navTourTarget } from "@/lib/tour/steps";
 
 export type NavItem = { href: string; label: string };
 
@@ -21,6 +22,7 @@ export function MainNav({ items }: { items: NavItem[] }) {
             <li key={item.href}>
               <Link
                 href={item.href}
+                data-tour={navTourTarget(item.href)}
                 aria-current={current ? "page" : undefined}
                 className={`inline-flex h-9 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:px-4 ${
                   current ? "bg-primary-soft text-primary" : "text-muted hover:bg-canvas hover:text-ink"

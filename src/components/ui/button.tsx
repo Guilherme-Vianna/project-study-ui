@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { Spinner } from "./spinner";
 
 type Variant = "primary" | "secondary" | "danger" | "link";
@@ -19,6 +19,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loadingLabel?: string;
   icon?: ReactNode;
   block?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 };
 
 export function Button({
