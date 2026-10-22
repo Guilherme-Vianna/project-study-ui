@@ -24,14 +24,17 @@ import {
 } from "@/lib/exercises/model";
 import { discardUploadedImage } from "@/lib/exercises/upload";
 import { hasErrors, validateExercise, type ExerciseErrors } from "@/lib/exercises/validation";
+import type { SkillGroupOption } from "@/lib/skills/model";
 import { ImageThumb } from "./image-thumb";
 import { ImageUploadButton } from "./image-upload-button";
+import { SkillPicker } from "./skill-picker";
 import { SubjectPicker } from "./subject-picker";
 
 type ExerciseEditorProps = {
   exerciseId: string | null;
   initialDraft: ExerciseDraft;
   subjects: { id: string; name: string }[];
+  skillGroups?: SkillGroupOption[];
   embedded?: { onSaved: (exercise: SavedExercise) => void; onCancel: () => void; submitLabel: string };
 };
 
@@ -40,7 +43,7 @@ const typeChoices: { value: ExerciseType; title: string; description: string }[]
   { value: "open_answer", title: "Resposta aberta", description: "O aluno responde por extenso." },
 ];
 
-export function ExerciseEditor({ exerciseId, initialDraft, subjects, embedded }: ExerciseEditorProps) {
+export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups = [], embedded }: ExerciseEditorProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState(initialDraft);
@@ -187,7 +190,7 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, embedded }:
           value={draft.title}
           maxLength={LIMITS.title + 20}
           placeholder="Ex.: Calcule o seno de 30°"
-          hint="Aparece na lista de exercícios e no plano de estudo."
+          hint="Aparece na sua lista de exercícios e na lista dos alunos."
           error={errors.title}
           disabled={pending}
           onChange={(event) => setField("title", event.target.value)}
@@ -277,7 +280,7 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, embedded }:
       {multiple ? (
         <Section
           title="Alternativas"
-          description="Marque uma ou mais alternativas corretas. Seus alunos não veem qual é a certa."
+          description="Marque uma ou mais alternativas corretas. O aluno só vê a resposta certa depois de responder."
         >
           <ol className="flex flex-col gap-3">
             {draft.options.map((option, index) => {
@@ -428,13 +431,23 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, embedded }:
             onChange={(ids) => setField("subjectIds", ids)}
           />
         </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-ink">Habilidades treinadas</p>
+          <SkillPicker
+            groups={skillGroups}
+            selected={draft.skillIds}
+            error={errors.skills}
+            disabled={pending}
+            onChange={(ids) => setField("skillIds", ids)}
+          />
+        </div>
         <TextField
           label="Tempo estimado"
           name="estimatedHours"
           optional
           inputMode="decimal"
           placeholder="Ex.: 0,5"
-          hint="Em horas: 0,5 = 30 minutos. Usado para calcular a carga do plano de estudo."
+          hint="Em horas: 0,5 = 30 minutos. Sugerido ao aluno quando ele responde; sem ele, o aluno precisa informar o tempo."
           value={draft.estimatedHours}
           error={errors.estimatedHours}
           disabled={pending}

@@ -63,8 +63,18 @@ const MAX_PAGE = 100;
 export async function fetchAll<T>(path: string): Promise<T[]> {
   const items: T[] = [];
   for (let offset = 0; ; offset += MAX_PAGE) {
-    const page = await apiFetch<Page<T>>(`${path}?limit=${MAX_PAGE}&offset=${offset}`);
+    const separator = path.includes("?") ? "&" : "?";
+    const page = await apiFetch<Page<T>>(`${path}${separator}limit=${MAX_PAGE}&offset=${offset}`);
     items.push(...page.items);
     if (page.items.length < MAX_PAGE || items.length >= page.total) return items;
   }
+}
+
+export function queryString(params: Record<string, string | number | null | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
 }

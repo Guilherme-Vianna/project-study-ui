@@ -55,7 +55,7 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
   and back after signup; teacher → explanation. Logged-out visitors go to `/?next=…` and return after login (`safeNextPath`).
 - "Remover" ends the enrollment (`DELETE /teachers/me/students/{id}`), never deletes the account. Destructive actions
   always go through `ConfirmDialog` (native `<dialog>`), and mutations call `refresh()` from `next/cache`.
-- Student home lists their teachers (`GET /students/me/teachers`); teacher home summarizes the class.
+- Student home shows the active plan's week and their teachers; teacher home summarizes the class and pending reviews.
 
 ## Subjects
 
@@ -71,9 +71,10 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 - Teacher `/exercicios` (list: search title/statement, type chips, subject select incl. "Sem assunto", recent/A–Z),
   `/exercicios/novo` and `/exercicios/[id]` (full-page `ExerciseEditor`, sticky save bar, discard confirmation and
   `beforeunload` guard when dirty). Draft model, payload mapping and validation live in `lib/exercises/`.
-- API rules mirrored: title ≤ 200, texts ≤ 10000, hours 0 < h ≤ 168 (typed as "0,5"), ≤ 20 subjects, ≤ 20 images;
-  multiple choice = 2–10 options, each with text or image, ≥ 1 correct, no expected answer; open answer = no options.
-  Saving uses `PUT` (full replace). Delete 409 = used by a study plan or has progress.
+- API rules mirrored: title ≤ 200, texts ≤ 10000, hours 0 < h ≤ 168 (typed as "0,5"), ≤ 20 subjects, ≤ 20 skills
+  (`skill_ids`, `SkillPicker` grouped by skill group), ≤ 20 images; multiple choice = 2–10 options, each with text or
+  image, ≥ 1 correct, no expected answer; open answer = no options. Saving uses `PUT` (full replace). Delete 409 =
+  students already answered it. Cards show subject and skill chips.
 - Images: browser → `POST /api/images` (route handler re-checks type/size and forwards multipart with the bearer
   token) → API `POST /images`; referenced by id with placement `statement` | `attachment` or on an option.
   Images uploaded in the editor and then removed/discarded are deleted best-effort (`DELETE /api/images/[id]`).
@@ -81,22 +82,40 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 
 ## Study plans
 
-- Teacher `/planos` (cards with weekly goal, subjects, exercises and active student count), `/planos/novo`,
-  `/planos/[id]` (assign to students, per-student progress this week + overall, end assignment, delete if never
-  assigned) and `/planos/[id]/editar`. Draft/payload/validation in `lib/plans/`.
-- `PlanEditor` must let teachers create what they forgot without leaving: "Novo assunto" opens `SubjectFormDialog`,
-  "Criar exercício" opens `ExerciseEditor` in `embedded` mode inside an `xl` locked `Modal`
-  (`saveExerciseAction(..., { stay: true })` returns the exercise). Created items join the plan immediately.
-- It also suggests adding subjects used by the plan's exercises, shows totals (weekly goal, allocated hours,
-  estimated weeks) and pre-selects the plan's subjects for new exercises.
-- API rules mirrored: title ≤ 200, description ≤ 5000, ≤ 50 subjects (weekly 0 < h ≤ 168, sum ≤ 168, optional
-  weekdays), ≤ 200 ordered exercises; empty allocated hours = exercise estimate, required when it has none.
-  `PUT` replaces the plan; editing affects every assigned student (the editor says so).
-- Assigning: "Atribuir plano" opens a modal with a searchable, multi-select student list; it disables students already following another plan (computed
-  from every plan's active assignments); 409 explains it. Ending keeps progress.
+- A plan is only subjects with weekly hours (+ optional weekdays). Students see every teacher exercise sharing any plan
+  subject, computed live (`exercisesInPlan` mirrors it in the UI). No exercise list or allocated hours anymore.
+- Teacher `/planos` (cards: weekly goal, subjects, available exercises, active students), `/planos/novo`,
+  `/planos/[id]` (assign, per-student progress, end assignment, delete only if never assigned: 409 → edit instead),
+  `/planos/[id]/editar`. Draft/payload/validation in `lib/plans/`; `PUT` affects every assigned student.
+- `PlanEditor` shows which exercises join through the chosen subjects; "Novo assunto" opens `SubjectFormDialog`,
+  "Criar exercício" opens `ExerciseEditor` in `embedded` mode (`saveExerciseAction(..., { stay: true })`).
+- API rules mirrored: title ≤ 200, description ≤ 5000, ≤ 50 subjects, weekly 0 < h ≤ 168, sum ≤ 168.
+- Assigning: "Atribuir plano" modal with searchable multi-select; students on another plan are disabled; 409 explains.
+- Progress (`PlanProgress`, weeks start Monday, `?semana=YYYY-MM-DD` on `/meu-plano`): week hours, per-subject goals,
+  exercises attempted/available, attempts, pending reviews (links to `/correcoes`), approved.
+
+## Attempts and reviews
+
+- Student `/meu-plano` (plan + progress, 404 = no plan), `/praticar` (plan exercises: search, subject, type, to-do/done)
+  and `/praticar/[id]` (statement, skills, `AttemptForm`, own history with review badge and teacher feedback).
+- Open answer: unlimited attempts. Multiple choice: once per assignment (`locked`, 409); afterwards show `is_correct`
+  and `correct_option_ids` (`AnsweredOptions`). `spent_hours` is prefilled with the estimate, required without one.
+- Teacher `/correcoes`: inbox filtered by URL (`status=pendentes|aprovadas|rejeitadas|todas`, `aluno`, `exercicio`,
+  `pagina`; build links with `reviewsHref`). `/correcoes/[id]`: answer, expected answer, `ReviewForm` (feedback ≤ 20000,
+  Aprovar / Rejeitar / back to pending, `PUT /attempts/{id}/review`), link to the next pending one.
+
+## Skills
+
+- Teacher `/habilidades` (group cards), `/habilidades/novo`, `/habilidades/[id]` (`SkillGroupEditor`: name,
+  description, ordered levels 1–20 lowest first, ≤ 100 skills; names ≤ 100, unique ignoring case). `PUT` keeps item
+  `id`s; omitted items are deleted. 409 = removed level/skill in use or duplicate name.
+- Teacher `/alunos/[id]`: `StudentSkillsPanel` (level per skill, notes ≤ 10000, remove, evolution from `/history` via
+  `loadSkillHistoryAction`), current plan progress, latest attempts. Student `/minhas-habilidades` is read-only.
 
 ## App shell
 
+- Nav: teacher Início, Alunos, Planos, Correções, Exercícios, Habilidades, Assuntos; student Início, Meu plano,
+  Exercícios (`/praticar`), Habilidades (`/minhas-habilidades`). Role pages use `requireTeacherAccount`/`requireStudentAccount`.
 - Authenticated pages: full-width sticky header (logo + role `MainNav` left, `AccountMenu` right; below `md` the nav
   drops to a scrollable second row: avatar initials, name, role;
   menu with "Meu perfil" and "Sair"), content in `max-w-7xl`, left-aligned. Never center the whole app in a narrow column.
@@ -116,19 +135,22 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 src/
   app/            page.tsx (login, "/"), api/session/route.ts, api/images/ (upload proxy + delete)
   app/(app)/      authenticated: layout (AppHeader, SessionRefresher), inicio/, cadastro/ (+ professor/, aluno/),
-                  perfil/ (+ editar/), alunos/, assuntos/, exercicios/ (+ novo/, [id]/),
-                  planos/ (+ novo/, [id]/, [id]/editar/),
-                  convite/[token]/
+                  perfil/ (+ editar/), alunos/ (+ [id]/), assuntos/, exercicios/ (+ novo/, [id]/),
+                  planos/ (+ novo/, [id]/, [id]/editar/), correcoes/ (+ [id]/), habilidades/ (+ novo/, [id]/),
+                  meu-plano/, praticar/ (+ [id]/), minhas-habilidades/, convite/[token]/
   components/ui/  button, text-field, text-area-field, alert, spinner, copy-button, modal, confirm-dialog,
                   icons (reuse before creating new ones)
   components/     app/ (header, account menu, page header, loading, API error), auth/, brand/,
                   profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/,
-                  subjects/, exercises/ (editor, board, subject picker, image upload/thumb),
-                  plans/ (editor, exercise picker, weekday picker, assign button + student picker modal, actions)
-  lib/            auth/ (constants, session, current account, errors), api/ (client + fetchAll, account, profiles, enrollments, subjects, exercises, plans),
+                  subjects/, exercises/ (editor, board, subject/skill pickers, image upload/thumb),
+                  plans/ (editor, weekday picker, assign button + student picker modal, progress, actions),
+                  attempts/ (parts, answer form, review form/filters), practice/, skills/
+  lib/            auth/ (constants, session, current account, errors, student guard), api/ (client + fetchAll/queryString,
+                  account, profiles, enrollments, subjects, exercises, plans, attempts, skills),
                   profile/ (fields, roles, actions, action state), invites/ (actions, links, validity), subjects/ (actions,
                   validation), exercises/ (model, validation, actions, upload, from-api, teacher-guard),
-                  plans/ (model, validation, actions, from-api), people, firebase/
+                  plans/ (model, validation, actions, from-api, weeks), attempts/ (model, actions),
+                  skills/ (model, actions, from-api), people, firebase/
   proxy.ts
 tests/            vitest setup and stubs; test files live next to the code as *.test.ts(x)
 ```

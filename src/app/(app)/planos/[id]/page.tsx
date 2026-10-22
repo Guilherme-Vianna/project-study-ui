@@ -5,19 +5,22 @@ import { ApiUnavailable } from "@/components/app/api-unavailable";
 import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
 import { AssignStudentButton } from "@/components/plans/assign-student-button";
+import { PlanProgress } from "@/components/plans/plan-progress";
 import { DeletePlanButton, EndAssignmentButton } from "@/components/plans/plan-actions";
 import { PlanNotFound } from "@/components/plans/plan-not-found";
 import { Alert } from "@/components/ui/alert";
 import { BooksIcon, ClipboardIcon, PencilIcon, UsersIcon } from "@/components/ui/icons";
 import { ApiError } from "@/lib/api/client";
 import { listMyStudents, personName } from "@/lib/api/enrollments";
+import { listMyExercises } from "@/lib/api/exercises";
 import { getAssignmentProgress, getPlan, listActiveAssignments, listMyPlans, type Progress } from "@/lib/api/plans";
-import { PLANS_PATH } from "@/lib/auth/constants";
+import { EXERCISES_PATH, PLANS_PATH, STUDENTS_PATH } from "@/lib/auth/constants";
+import { reviewsHref } from "@/lib/attempts/model";
 import { EXERCISE_TYPE_LABELS, formatHours } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { formatDate } from "@/lib/invites/validity";
 import { initialsOf } from "@/lib/people";
-import { WEEKDAYS } from "@/lib/plans/model";
+import { exercisesInPlan, WEEKDAYS } from "@/lib/plans/model";
 import { formatMobilePhone } from "@/lib/profile/fields";
 
 export const metadata: Metadata = {
@@ -41,12 +44,12 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
 
   let data;
   try {
-    data = await Promise.all([getPlan(id), listActiveAssignments(id), listMyStudents(), listMyPlans()]);
+    data = await Promise.all([getPlan(id), listActiveAssignments(id), listMyStudents(), listMyPlans(), listMyExercises()]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) return <PlanNotFound />;
     return <ApiUnavailable retryHref={href} />;
   }
-  const [plan, assignments, students, plans] = data;
+  const [plan, assignments, students, plans, allExercises] = data;
 
   let progress: (Progress | null)[];
   let busy: Map<string, { planId: string; title: string }>;
@@ -66,7 +69,7 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
   }
 
   const studentName = new Map(students.map((student) => [student.id, personName(student) || "Aluno sem nome"]));
-  const exercises = [...plan.exercises].sort((a, b) => a.position - b.position);
+  const exercises = exercisesInPlan(allExercises, plan.subjects.map((item) => item.subject.id)).sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
 
   return (
     <div className="flex flex-col gap-6">
@@ -93,8 +96,8 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
 
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Meta semanal" value={plan.required_weekly_hours ? formatHours(plan.required_weekly_hours) : "—"} />
-        <Stat label="Horas de exercícios" value={plan.allocated_hours ? formatHours(plan.allocated_hours) : "—"} />
-        <Stat label="Exercícios" value={String(plan.exercises.length)} />
+        <Stat label="Assuntos" value={String(plan.subjects.length)} />
+        <Stat label="Exercícios disponíveis" value={String(exercises.length)} />
         <Stat label="Alunos" value={String(assignments.length)} />
       </dl>
 
@@ -121,7 +124,6 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
               {assignments.map((assignment, index) => {
                 const name = studentName.get(assignment.student_id) ?? "Aluno";
                 const stats = progress[index];
-                const rate = stats ? Math.round(stats.completion_rate * 100) : 0;
                 return (
                   <li key={assignment.id} className="rounded-2xl border border-border p-4">
                     <div className="flex items-center gap-3">
@@ -129,36 +131,22 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
                         {initialsOf(name)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-ink">{name}</p>
+                        <Link href={`${STUDENTS_PATH}/${assignment.student_id}`} className="block truncate font-medium text-ink hover:text-primary hover:underline">
+                          {name}
+                        </Link>
                         <p className="text-xs text-muted">Desde {formatDate(assignment.created_at)}</p>
                       </div>
                       <EndAssignmentButton planId={plan.id} assignmentId={assignment.id} studentName={name} />
                     </div>
                     {stats ? (
                       <div className="mt-4 flex flex-col gap-3">
-                        <ProgressBar label="Plano concluído" value={rate} detail={`${stats.completed_exercises} de ${stats.total_exercises} exercícios · ${rate}%`} tone="success" />
-                        <ProgressBar
-                          label="Esta semana"
-                          value={stats.required_weekly_hours ? Math.min(100, Math.round((stats.week_completed_hours / stats.required_weekly_hours) * 100)) : 0}
-                          detail={`${formatHours(stats.week_completed_hours)} de ${formatHours(stats.required_weekly_hours)}`}
-                          tone="primary"
-                        />
-                        {stats.subjects.length > 0 && (
-                          <details className="rounded-xl bg-canvas px-3 py-2">
-                            <summary className="cursor-pointer text-sm font-medium text-ink">Por assunto nesta semana</summary>
-                            <ul className="mt-2 flex flex-col gap-1.5 text-sm">
-                              {stats.subjects.map((subject) => (
-                                <li key={subject.subject.id} className="flex justify-between gap-3">
-                                  <span className="text-ink">{subject.subject.name}</span>
-                                  <span className={subject.week_remaining_hours > 0 ? "text-muted" : "text-success-strong"}>
-                                    {formatHours(subject.week_completed_hours)} de {formatHours(subject.weekly_hours)}
-                                    {subject.week_remaining_hours > 0 ? ` · faltam ${formatHours(subject.week_remaining_hours)}` : " ✓"}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </details>
-                        )}
+                        <PlanProgress progress={stats} pendingHref={reviewsHref({ status: "pending", studentId: assignment.student_id })} />
+                        <Link
+                          href={reviewsHref({ status: "all", studentId: assignment.student_id })}
+                          className="self-start rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+                        >
+                          Ver respostas de {name.split(" ")[0]}
+                        </Link>
                       </div>
                     ) : (
                       <p className="mt-3 text-sm text-muted">Não foi possível carregar o progresso agora.</p>
@@ -192,27 +180,30 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
               </ul>
             )}
           </Panel>
-          <Panel title="Exercícios" icon={<ClipboardIcon className="size-5" />}>
+          <Panel title="Exercícios disponíveis" icon={<ClipboardIcon className="size-5" />}>
+            <p className="-mt-2 text-sm text-muted">Todos os seus exercícios com algum assunto do plano. Novos exercícios entram sozinhos.</p>
             {exercises.length === 0 ? (
-              <p className="text-sm text-muted">Nenhum exercício. Edite o plano para adicionar.</p>
+              <p className="text-sm text-muted">
+                Nenhum exercício usa os assuntos deste plano.{" "}
+                <Link href={`${EXERCISES_PATH}/novo`} className="font-medium text-primary underline-offset-4 hover:underline">
+                  Criar exercício
+                </Link>
+              </p>
             ) : (
-              <ol className="flex flex-col divide-y divide-border">
-                {exercises.map((item, index) => (
-                  <li key={item.exercise.id} className="flex items-start gap-3 py-2.5">
-                    <span aria-hidden="true" className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-canvas text-xs font-semibold text-ink">
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-ink">{item.exercise.title}</p>
-                      <p className="text-xs text-muted">
-                        {EXERCISE_TYPE_LABELS[item.exercise.type]}
-                        {item.exercise.subjects.length > 0 && ` · ${item.exercise.subjects.map((subject) => subject.name).join(", ")}`}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm text-muted">{formatHours(item.allocated_hours)}</span>
+              <ul className="flex flex-col divide-y divide-border">
+                {exercises.map((exercise) => (
+                  <li key={exercise.id} className="py-2.5">
+                    <Link href={`${EXERCISES_PATH}/${exercise.id}`} className="font-medium text-ink hover:text-primary hover:underline">
+                      {exercise.title}
+                    </Link>
+                    <p className="text-xs text-muted">
+                      {EXERCISE_TYPE_LABELS[exercise.type]}
+                      {exercise.estimated_hours ? ` · ${formatHours(exercise.estimated_hours)}` : ""}
+                      {exercise.subjects.length > 0 && ` · ${exercise.subjects.map((subject) => subject.name).join(", ")}`}
+                    </p>
                   </li>
                 ))}
-              </ol>
+              </ul>
             )}
           </Panel>
         </div>
@@ -238,20 +229,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-border bg-surface p-4">
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="mt-1 text-2xl font-semibold text-ink">{value}</dd>
-    </div>
-  );
-}
-
-function ProgressBar({ label, value, detail, tone }: { label: string; value: number; detail: string; tone: "primary" | "success" }) {
-  return (
-    <div>
-      <div className="flex justify-between gap-3 text-xs">
-        <span className="font-medium text-ink">{label}</span>
-        <span className="text-muted">{detail}</span>
-      </div>
-      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} className="mt-1.5 h-2 rounded-full bg-canvas">
-        <div className={`h-2 rounded-full ${tone === "success" ? "bg-success" : "bg-primary"}`} style={{ width: `${value}%` }} />
-      </div>
     </div>
   );
 }

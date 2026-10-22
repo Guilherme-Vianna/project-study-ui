@@ -36,6 +36,9 @@ function saveFailure(error: unknown): SaveExerciseResult {
       if (detail.startsWith("Unknown subjects")) {
         return { ok: false, errors: { subjects: "Algum assunto escolhido foi excluído. Revise os assuntos." }, formError: null };
       }
+      if (detail.startsWith("Unknown skills")) {
+        return { ok: false, errors: { skills: "Alguma habilidade escolhida foi excluída. Revise as habilidades." }, formError: null };
+      }
       if (detail.startsWith("Unknown images")) {
         return { ok: false, errors: { images: "Alguma imagem não está mais disponível. Envie de novo." }, formError: null };
       }
@@ -88,7 +91,7 @@ export async function deleteExerciseAction(exerciseId: string): Promise<DeleteEx
       if (error.status === 409) {
         return {
           ok: false,
-          error: "Este exercício está em um plano de estudo ou já tem progresso de alunos, por isso não pode ser excluído.",
+          error: "Seus alunos já responderam este exercício, por isso ele não pode ser excluído. Você ainda pode editá-lo.",
         };
       }
       if (error.status === 404) return { ok: false, error: "Este exercício já foi excluído. Atualize a página." };

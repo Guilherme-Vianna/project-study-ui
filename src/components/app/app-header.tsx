@@ -3,7 +3,18 @@ import { Suspense } from "react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Logo } from "@/components/brand/logo";
 import { profileOf } from "@/lib/api/account";
-import { EXERCISES_PATH, HOME_PATH, PLANS_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
+import {
+  EXERCISES_PATH,
+  HOME_PATH,
+  MY_PLAN_PATH,
+  MY_SKILLS_PATH,
+  PLANS_PATH,
+  PRACTICE_PATH,
+  REVIEWS_PATH,
+  SKILLS_PATH,
+  STUDENTS_PATH,
+  SUBJECTS_PATH,
+} from "@/lib/auth/constants";
 import { loadCurrentAccount } from "@/lib/auth/current-account";
 import { ROLE_COPY, type Role } from "@/lib/profile/roles";
 import { AccountMenu } from "./account-menu";
@@ -14,10 +25,17 @@ const navigation: Record<Role, NavItem[]> = {
     { href: HOME_PATH, label: "Início" },
     { href: STUDENTS_PATH, label: "Alunos" },
     { href: PLANS_PATH, label: "Planos" },
+    { href: REVIEWS_PATH, label: "Correções" },
     { href: EXERCISES_PATH, label: "Exercícios" },
+    { href: SKILLS_PATH, label: "Habilidades" },
     { href: SUBJECTS_PATH, label: "Assuntos" },
   ],
-  student: [{ href: HOME_PATH, label: "Início" }],
+  student: [
+    { href: HOME_PATH, label: "Início" },
+    { href: MY_PLAN_PATH, label: "Meu plano" },
+    { href: PRACTICE_PATH, label: "Exercícios" },
+    { href: MY_SKILLS_PATH, label: "Habilidades" },
+  ],
 };
 
 export function AppHeader() {

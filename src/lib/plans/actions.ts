@@ -6,7 +6,7 @@ import { ApiError } from "@/lib/api/client";
 import { assignPlan, createPlan, deletePlan, endAssignment, replacePlan } from "@/lib/api/plans";
 import { LOGIN_PATH, PLANS_PATH } from "@/lib/auth/constants";
 import { getSessionUser } from "@/lib/auth/session";
-import type { ExerciseOption, PlanDraft } from "./model";
+import type { PlanDraft } from "./model";
 import { hasPlanErrors, toPlanPayload, validatePlan, type PlanErrors } from "./validation";
 
 export type SavePlanResult = { ok: false; errors: PlanErrors; formError: string | null };
@@ -24,13 +24,9 @@ function apiMessage(error: unknown, messages: Partial<Record<number, string>>, f
   return fallback;
 }
 
-export async function savePlanAction(
-  planId: string | null,
-  draft: PlanDraft,
-  exercises: ExerciseOption[],
-): Promise<SavePlanResult> {
+export async function savePlanAction(planId: string | null, draft: PlanDraft): Promise<SavePlanResult> {
   await requireSession();
-  const errors = validatePlan(draft, exercises);
+  const errors = validatePlan(draft);
   if (hasPlanErrors(errors)) return { ok: false, errors, formError: "Revise os campos destacados." };
 
   let savedId: string;
@@ -38,10 +34,6 @@ export async function savePlanAction(
     const saved = planId ? await replacePlan(planId, toPlanPayload(draft)) : await createPlan(toPlanPayload(draft));
     savedId = saved.id;
   } catch (error) {
-    const detail = error instanceof ApiError && typeof error.detail === "string" ? error.detail : "";
-    if (error instanceof ApiError && error.status === 422 && detail.includes("needs allocated_hours")) {
-      return { ok: false, errors: { exercises: "Algum exercício está sem horas. Informe as horas dele." }, formError: null };
-    }
     return {
       ok: false,
       errors: {},
@@ -49,7 +41,7 @@ export async function savePlanAction(
         error,
         {
           404: "Este plano não existe mais. Volte para a lista.",
-          422: "Algum assunto ou exercício escolhido foi excluído. Revise o plano e tente de novo.",
+          422: "Algum assunto escolhido foi excluído. Revise o plano e tente de novo.",
           403: "Só professores podem criar planos de estudo.",
         },
         "Não foi possível salvar agora. Seus dados continuam aqui; tente de novo.",
@@ -69,7 +61,7 @@ export async function deletePlanAction(planId: string): Promise<PlanActionResult
       error: apiMessage(
         error,
         {
-          409: "Este plano já foi atribuído a alunos, então fica guardado no histórico. Encerre as atribuições em vez de excluir.",
+          409: "Este plano já foi atribuído a alunos e fica guardado com as respostas deles. Edite o plano em vez de excluir.",
           404: "Este plano já foi excluído.",
         },
         "Não foi possível excluir agora. Tente de novo em instantes.",

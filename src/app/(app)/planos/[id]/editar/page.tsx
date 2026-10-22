@@ -8,9 +8,11 @@ import { PlanNotFound } from "@/components/plans/plan-not-found";
 import { ApiError } from "@/lib/api/client";
 import { listMyExercises } from "@/lib/api/exercises";
 import { getPlan, listActiveAssignments } from "@/lib/api/plans";
+import { listSkillGroups } from "@/lib/api/skills";
 import { listMySubjects } from "@/lib/api/subjects";
 import { PLANS_PATH } from "@/lib/auth/constants";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
+import { toSkillGroupOptions } from "@/lib/skills/from-api";
 import { planToDraft, toExerciseOptions, toSubjectOptions } from "@/lib/plans/from-api";
 
 export const metadata: Metadata = {
@@ -32,12 +34,12 @@ async function EditPlan({ params }: Pick<PageProps<"/planos/[id]/editar">, "para
 
   let data;
   try {
-    data = await Promise.all([getPlan(id), listMySubjects(), listMyExercises(), listActiveAssignments(id)]);
+    data = await Promise.all([getPlan(id), listMySubjects(), listMyExercises(), listActiveAssignments(id), listSkillGroups()]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) return <PlanNotFound />;
     return <ApiUnavailable retryHref={`${detailHref}/editar`} />;
   }
-  const [plan, subjects, exercises, assignments] = data;
+  const [plan, subjects, exercises, assignments, groups] = data;
 
   return (
     <>
@@ -47,6 +49,7 @@ async function EditPlan({ params }: Pick<PageProps<"/planos/[id]/editar">, "para
         initialDraft={planToDraft(plan)}
         subjects={toSubjectOptions(subjects)}
         exercises={toExerciseOptions(exercises)}
+        skillGroups={toSkillGroupOptions(groups)}
         cancelHref={detailHref}
         assignedCount={assignments.length}
       />

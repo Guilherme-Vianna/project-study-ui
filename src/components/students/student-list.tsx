@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useId, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchIcon } from "@/components/ui/icons";
+import { STUDENTS_PATH } from "@/lib/auth/constants";
 import { removeStudentAction } from "@/lib/invites/actions";
 import { initialsOf } from "@/lib/people";
 import { filterStudents, type StudentFilter, type StudentItem, type StudentSort } from "./student-filters";
@@ -114,7 +116,12 @@ export function StudentList({ students }: { students: StudentItem[] }) {
                   {initialsOf(student.name)}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-ink">{student.name}</p>
+                  <Link
+                    href={`${STUDENTS_PATH}/${student.id}`}
+                    className="block truncate rounded-sm font-medium text-ink hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    {student.name}
+                  </Link>
                   <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
                     {student.phoneHref ? (
                       <a href={student.phoneHref} className="hover:text-ink hover:underline">

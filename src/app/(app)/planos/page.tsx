@@ -6,10 +6,12 @@ import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
 import { Alert } from "@/components/ui/alert";
 import { CalendarIcon, PlusIcon, UsersIcon } from "@/components/ui/icons";
+import { listMyExercises } from "@/lib/api/exercises";
 import { listActiveAssignments, listMyPlans } from "@/lib/api/plans";
 import { PLANS_PATH } from "@/lib/auth/constants";
 import { formatHours } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
+import { exercisesInPlan } from "@/lib/plans/model";
 
 export const metadata: Metadata = {
   title: "Planos de estudo",
@@ -23,7 +25,7 @@ export default function PlansPage({ searchParams }: PageProps<"/planos">) {
     <>
       <PageHeader
         title="Planos de estudo"
-        description="Modelos com metas semanais por assunto e uma lista de exercícios. Monte uma vez e atribua a quantos alunos quiser."
+        description="Metas semanais por assunto. O aluno pratica todos os seus exercícios desses assuntos. Monte uma vez e atribua a quantos alunos quiser."
         actions={
           <Link href={`${PLANS_PATH}/novo`} className={primaryLink}>
             <PlusIcon />
@@ -43,9 +45,10 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/planos">, "search
   if (!account) return <ApiUnavailable retryHref={PLANS_PATH} />;
 
   let plans;
+  let exercises;
   let assignedCounts: number[];
   try {
-    plans = await listMyPlans();
+    [plans, exercises] = await Promise.all([listMyPlans(), listMyExercises()]);
     assignedCounts = await Promise.all(plans.map(async (plan) => (await listActiveAssignments(plan.id)).length));
   } catch {
     return <ApiUnavailable retryHref={PLANS_PATH} />;
@@ -58,7 +61,7 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/planos">, "search
         <div className="rounded-3xl border border-dashed border-border-strong/60 bg-surface p-8 sm:p-12">
           <h2 className="text-xl font-semibold text-ink">Crie seu primeiro plano de estudo</h2>
           <ol className="mt-4 flex flex-col gap-3 text-muted sm:flex-row sm:gap-8">
-            {["Escolha os assuntos e as horas por semana", "Adicione os exercícios na ordem certa", "Atribua o plano aos seus alunos"].map((step, index) => (
+            {["Escolha os assuntos e as horas por semana", "Os exercícios desses assuntos entram sozinhos", "Atribua o plano aos seus alunos"].map((step, index) => (
               <li key={step} className="flex items-center gap-3">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">{index + 1}</span>
                 {step}
@@ -72,7 +75,9 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/planos">, "search
         </div>
       ) : (
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {plans.map((plan, index) => (
+          {plans.map((plan, index) => {
+            const available = exercisesInPlan(exercises, plan.subjects.map((item) => item.subject.id)).length;
+            return (
             <li key={plan.id}>
               <Link
                 href={`${PLANS_PATH}/${plan.id}`}
@@ -98,11 +103,12 @@ async function PlansContent({ searchParams }: Pick<PageProps<"/planos">, "search
                 <dl className="mt-auto grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
                   <MiniStat label="por semana" value={plan.required_weekly_hours ? formatHours(plan.required_weekly_hours) : "—"} />
                   <MiniStat label={plan.subjects.length === 1 ? "assunto" : "assuntos"} value={String(plan.subjects.length)} />
-                  <MiniStat label={plan.exercises.length === 1 ? "exercício" : "exercícios"} value={String(plan.exercises.length)} />
+                  <MiniStat label={available === 1 ? "exercício" : "exercícios"} value={String(available)} />
                 </dl>
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>

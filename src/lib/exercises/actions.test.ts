@@ -84,8 +84,8 @@ describe("exercise actions", () => {
   });
 
   it("explains why an exercise in use cannot be deleted", async () => {
-    api.deleteExercise.mockRejectedValue(new ApiError(409, "Exercise is used by a study plan"));
-    expect(await deleteExerciseAction("e1")).toEqual({ ok: false, error: expect.stringMatching(/plano de estudo/) });
+    api.deleteExercise.mockRejectedValue(new ApiError(409, "Exercise has recorded attempts"));
+    expect(await deleteExerciseAction("e1")).toEqual({ ok: false, error: expect.stringMatching(/já responderam/) });
   });
 
   it("deletes an exercise and refreshes", async () => {

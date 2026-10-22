@@ -6,6 +6,7 @@ export type ExerciseErrors = {
   expectedAnswer?: string;
   estimatedHours?: string;
   subjects?: string;
+  skills?: string;
   images?: string;
   options?: string;
   optionText?: Record<string, string>;
@@ -31,6 +32,7 @@ export function validateExercise(draft: ExerciseDraft): ExerciseErrors {
   }
 
   if (draft.subjectIds.length > LIMITS.subjects) errors.subjects = `Escolha até ${LIMITS.subjects} assuntos.`;
+  if (draft.skillIds.length > LIMITS.skills) errors.skills = `Escolha até ${LIMITS.skills} habilidades.`;
   if (draft.images.length > LIMITS.images) errors.images = `Use até ${LIMITS.images} imagens.`;
 
   if (draft.type === "open_answer") {

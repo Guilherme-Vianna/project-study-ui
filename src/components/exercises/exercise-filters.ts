@@ -7,6 +7,7 @@ export type ExerciseItem = {
   type: ExerciseType;
   statementPreview: string | null;
   subjects: { id: string; name: string }[];
+  skills: { id: string; name: string }[];
   hoursLabel: string | null;
   imageCount: number;
   optionCount: number;

@@ -171,6 +171,11 @@ export function ExerciseBoard({ exercises, subjects }: { exercises: ExerciseItem
                   ) : (
                     <span className="text-xs italic text-muted">Sem assunto</span>
                   )}
+                  {exercise.skills.map((skill) => (
+                    <span key={skill.id} className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs text-success-strong">
+                      {skill.name}
+                    </span>
+                  ))}
                   <span className="ml-auto text-xs text-muted">Atualizado em {exercise.updatedLabel}</span>
                 </div>
               </div>
@@ -185,7 +190,7 @@ export function ExerciseBoard({ exercises, subjects }: { exercises: ExerciseItem
                 </Link>
                 <ConfirmDialog
                   title={`Excluir “${exercise.title}”?`}
-                  description="O exercício sai da sua lista. Isso não pode ser desfeito."
+                  description="O exercício sai da sua lista e dos planos. Exercícios que alunos já responderam não podem ser excluídos."
                   confirmLabel="Excluir exercício"
                   pendingLabel="Excluindo…"
                   onConfirm={async () => {

@@ -14,11 +14,11 @@ import { Modal } from "@/components/ui/modal";
 import { TextAreaField } from "@/components/ui/text-area-field";
 import { TextField } from "@/components/ui/text-field";
 import type { SavedExercise } from "@/lib/exercises/actions";
-import { emptyDraft, EXERCISE_TYPE_LABELS, formatHours } from "@/lib/exercises/model";
+import { emptyDraft, formatHours } from "@/lib/exercises/model";
 import { savePlanAction } from "@/lib/plans/actions";
-import { hoursToInput, PLAN_LIMITS, type ExerciseOption, type PlanDraft, type SubjectOption } from "@/lib/plans/model";
-import { allocatedTotal, hasPlanErrors, validatePlan, weeklyTotal, type PlanErrors } from "@/lib/plans/validation";
-import { ExercisePickerDialog } from "./exercise-picker-dialog";
+import { exercisesInPlan, PLAN_LIMITS, type ExerciseOption, type PlanDraft, type SubjectOption } from "@/lib/plans/model";
+import { hasPlanErrors, validatePlan, weeklyTotal, type PlanErrors } from "@/lib/plans/validation";
+import type { SkillGroupOption } from "@/lib/skills/model";
 import { WeekdayPicker } from "./weekday-picker";
 
 type PlanEditorProps = {
@@ -26,6 +26,7 @@ type PlanEditorProps = {
   initialDraft: PlanDraft;
   subjects: SubjectOption[];
   exercises: ExerciseOption[];
+  skillGroups?: SkillGroupOption[];
   cancelHref: string;
   assignedCount?: number;
 };
@@ -33,7 +34,15 @@ type PlanEditorProps = {
 const iconButton =
   "inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-30";
 
-export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, exercises: initialExercises, cancelHref, assignedCount = 0 }: PlanEditorProps) {
+export function PlanEditor({
+  planId,
+  initialDraft,
+  subjects: initialSubjects,
+  exercises: initialExercises,
+  skillGroups = [],
+  cancelHref,
+  assignedCount = 0,
+}: PlanEditorProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [draft, setDraft] = useState(initialDraft);
@@ -44,7 +53,6 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
   const [notice, setNotice] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [subjectDraft, setSubjectDraft] = useState<SubjectDraft | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [creatingExercise, setCreatingExercise] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -58,19 +66,10 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
   }, [dirty, pending]);
 
   const subjectById = new Map(subjects.map((subject) => [subject.id, subject]));
-  const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const planSubjectIds = draft.subjects.map((item) => item.subjectId);
   const unusedSubjects = subjects.filter((subject) => !planSubjectIds.includes(subject.id));
-  const missingFromExercises = [
-    ...new Map(
-      draft.exercises
-        .flatMap((item) => exerciseById.get(item.exerciseId)?.subjects ?? [])
-        .filter((subject) => !planSubjectIds.includes(subject.id))
-        .map((subject) => [subject.id, subject]),
-    ).values(),
-  ];
+  const available = exercisesInPlan(exercises, planSubjectIds);
   const weekly = weeklyTotal(draft);
-  const allocated = allocatedTotal(draft, exercises);
 
   function change(update: (current: PlanDraft) => PlanDraft) {
     setDraft(update);
@@ -99,22 +98,6 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
     }
   }
 
-  function addExercises(ids: string[]) {
-    change((current) => ({
-      ...current,
-      exercises: [...current.exercises, ...ids.filter((id) => !current.exercises.some((item) => item.exerciseId === id)).map((exerciseId) => ({ exerciseId, allocatedHours: "" }))],
-    }));
-  }
-
-  function moveExercise(index: number, delta: number) {
-    change((current) => {
-      const list = [...current.exercises];
-      const [moved] = list.splice(index, 1);
-      list.splice(index + delta, 0, moved);
-      return { ...current, exercises: list };
-    });
-  }
-
   function handleSubjectCreated(subject: { id: string; name: string }, created: boolean) {
     setSubjectDraft(null);
     if (!created) return;
@@ -126,13 +109,17 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
   function handleExerciseCreated(exercise: SavedExercise) {
     setCreatingExercise(false);
     setExercises((current) => [...current, exercise]);
-    addExercises([exercise.id]);
-    setNotice(`Exercício “${exercise.title}” criado e adicionado ao plano.`);
+    const inPlan = exercise.subjects.some((subject) => planSubjectIds.includes(subject.id));
+    setNotice(
+      inPlan
+        ? `Exercício “${exercise.title}” criado. Ele já aparece para os alunos do plano.`
+        : `Exercício “${exercise.title}” criado, mas sem nenhum assunto do plano. Os alunos só veem exercícios com assuntos do plano.`,
+    );
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const found = validatePlan(draft, exercises);
+    const found = validatePlan(draft);
     flushSync(() => {
       setErrors(found);
       setFormError(hasPlanErrors(found) ? "Revise os campos destacados." : null);
@@ -142,7 +129,7 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
       return;
     }
     startTransition(async () => {
-      const result = await savePlanAction(planId, draft, exercises);
+      const result = await savePlanAction(planId, draft);
       if (!result) return;
       flushSync(() => {
         setErrors(result.errors);
@@ -172,8 +159,8 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
           {notice && <Alert tone="success">{notice}</Alert>}
           {planId && assignedCount > 0 && (
             <Alert tone="info">
-              Este plano está com {assignedCount} {assignedCount === 1 ? "aluno" : "alunos"}. As mudanças valem para todos; o que eles já
-              concluíram continua contando.
+              Este plano está com {assignedCount} {assignedCount === 1 ? "aluno" : "alunos"}. As mudanças valem para todos; as respostas que
+              eles já enviaram continuam contando.
             </Alert>
           )}
 
@@ -267,18 +254,6 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
               </ul>
             )}
 
-            {missingFromExercises.length > 0 && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-accent/40 bg-accent-soft p-4 sm:flex-row sm:items-center">
-                <p className="flex-1 text-sm text-ink">
-                  Os exercícios do plano usam {missingFromExercises.length === 1 ? "um assunto que não está" : "assuntos que não estão"} aqui:{" "}
-                  <strong>{new Intl.ListFormat("pt-BR").format(missingFromExercises.map((subject) => subject.name))}</strong>.
-                </p>
-                <Button variant="secondary" disabled={pending} onClick={() => addSubjects(missingFromExercises.map((subject) => subject.id))}>
-                  Adicionar ao plano
-                </Button>
-              </div>
-            )}
-
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium text-ink">{draft.subjects.length ? "Adicionar mais assuntos" : "Escolha os assuntos do plano"}</p>
               <div className="flex flex-wrap gap-2">
@@ -313,110 +288,32 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
           </Section>
 
           <Section
-            title="Exercícios"
-            description="Na ordem em que o aluno deve fazer. As horas de cada um contam para a meta dos assuntos dele."
+            title="Exercícios do plano"
+            description="Entram sozinhos: o aluno vê todos os seus exercícios que tenham algum assunto do plano, inclusive os que você criar depois."
             icon={<ClipboardIcon className="size-5" />}
           >
-            {draft.exercises.length === 0 ? (
-              <p className="rounded-2xl bg-canvas px-4 py-3 text-sm text-muted">Nenhum exercício no plano ainda.</p>
-            ) : (
-              <ol className="flex flex-col gap-2">
-                {draft.exercises.map((item, index) => {
-                  const exercise = exerciseById.get(item.exerciseId);
-                  const title = exercise?.title ?? "Exercício removido";
-                  const error = errors.exerciseHours?.[item.exerciseId];
-                  return (
-                    <li key={item.exerciseId} className="flex flex-col gap-3 rounded-2xl border border-border p-3 sm:flex-row sm:items-start">
-                      <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-canvas text-sm font-semibold text-ink">
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-ink">{title}</p>
-                        {exercise && (
-                          <p className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted">
-                            <span>{EXERCISE_TYPE_LABELS[exercise.type]}</span>
-                            {exercise.subjects.map((subject) => (
-                              <span key={subject.id} className="rounded-full border border-border bg-canvas px-2 py-0.5 text-ink">
-                                {subject.name}
-                              </span>
-                            ))}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-start gap-1">
-                        <div className="w-36">
-                          <label className="sr-only" htmlFor={`hours-${item.exerciseId}`}>
-                            Horas para {title}
-                          </label>
-                          <div className="relative">
-                            <input
-                              id={`hours-${item.exerciseId}`}
-                              inputMode="decimal"
-                              value={item.allocatedHours}
-                              placeholder={exercise?.estimatedHours ? hoursToInput(exercise.estimatedHours) : "Ex.: 1"}
-                              aria-invalid={error ? true : undefined}
-                              disabled={pending}
-                              onChange={(event) => {
-                                const allocatedHours = event.target.value;
-                                change((current) => ({
-                                  ...current,
-                                  exercises: current.exercises.map((entry) => (entry.exerciseId === item.exerciseId ? { ...entry, allocatedHours } : entry)),
-                                }));
-                                setErrors((current) => {
-                                  const exerciseHours = { ...current.exerciseHours };
-                                  delete exerciseHours[item.exerciseId];
-                                  return { ...current, exerciseHours };
-                                });
-                              }}
-                              className={`h-10 w-full rounded-full border bg-surface pl-4 pr-8 text-sm text-ink placeholder:text-muted focus:outline-2 ${
-                                error ? "border-danger focus:outline-danger" : "border-border-strong focus:border-primary focus:outline-primary"
-                              }`}
-                            />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted">h</span>
-                          </div>
-                          {error ? (
-                            <p className="mt-1 text-xs text-danger">{error}</p>
-                          ) : (
-                            exercise?.estimatedHours != null &&
-                            !item.allocatedHours && <p className="mt-1 text-xs text-muted">Padrão do exercício: {formatHours(exercise.estimatedHours)}</p>
-                          )}
-                        </div>
-                        <button type="button" aria-label={`Mover ${title} para cima`} disabled={pending || index === 0} onClick={() => moveExercise(index, -1)} className={`${iconButton} hover:bg-canvas hover:text-ink`}>
-                          <ChevronIcon up />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Mover ${title} para baixo`}
-                          disabled={pending || index === draft.exercises.length - 1}
-                          onClick={() => moveExercise(index, 1)}
-                          className={`${iconButton} hover:bg-canvas hover:text-ink`}
-                        >
-                          <ChevronIcon />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Tirar ${title} do plano`}
-                          disabled={pending}
-                          onClick={() => change((current) => ({ ...current, exercises: current.exercises.filter((entry) => entry.exerciseId !== item.exerciseId) }))}
-                          className={`${iconButton} hover:bg-danger-soft hover:text-danger`}
-                        >
-                          <XIcon />
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-            {errors.exercises && (
-              <p data-error="true" tabIndex={-1} className="text-sm text-danger outline-none">
-                {errors.exercises}
+            {planSubjectIds.length === 0 ? (
+              <p className="rounded-2xl bg-canvas px-4 py-3 text-sm text-muted">Escolha os assuntos para ver quais exercícios entram no plano.</p>
+            ) : available.length === 0 ? (
+              <p className="rounded-2xl bg-accent-soft px-4 py-3 text-sm text-ink">
+                Nenhum exercício seu usa esses assuntos ainda. Crie um para que os alunos tenham o que praticar.
               </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-ink">
+                  <strong>{available.length}</strong> {available.length === 1 ? "exercício disponível" : "exercícios disponíveis"} para os alunos:
+                </p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {available.slice(0, 12).map((exercise) => (
+                    <li key={exercise.id} className="rounded-full border border-border bg-canvas px-2.5 py-0.5 text-xs text-ink">
+                      {exercise.title}
+                    </li>
+                  ))}
+                  {available.length > 12 && <li className="px-1 text-xs text-muted">e mais {available.length - 12}</li>}
+                </ul>
+              </div>
             )}
-            <div className="flex flex-wrap gap-3">
-              <Button variant="secondary" icon={<PlusIcon />} disabled={pending} onClick={() => setPickerOpen(true)}>
-                Escolher exercícios
-              </Button>
+            <div>
               <Button variant="secondary" icon={<PlusIcon />} disabled={pending} onClick={() => setCreatingExercise(true)}>
                 Criar exercício
               </Button>
@@ -428,19 +325,12 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
           <p className="font-semibold text-ink">Resumo</p>
           <dl className="grid grid-cols-2 gap-4 lg:grid-cols-1">
             <Stat label="Meta semanal" value={weekly ? formatHours(weekly) : "—"} hint={`máx. ${PLAN_LIMITS.weeklyHours}h`} warn={weekly > PLAN_LIMITS.weeklyHours} />
-            <Stat label="Horas de exercícios" value={allocated ? formatHours(allocated) : "—"} />
             <Stat label="Assuntos" value={String(draft.subjects.length)} />
-            <Stat label="Exercícios" value={String(draft.exercises.length)} />
+            <Stat label="Exercícios disponíveis" value={String(available.length)} />
           </dl>
-          {weekly > 0 && allocated > 0 && (
-            <p className="rounded-2xl bg-primary-soft p-3 text-sm text-ink">
-              No ritmo de {formatHours(weekly)} por semana, os exercícios levam cerca de{" "}
-              <strong>
-                {Math.max(1, Math.ceil(allocated / weekly))} {Math.ceil(allocated / weekly) > 1 ? "semanas" : "semana"}
-              </strong>
-              .
-            </p>
-          )}
+          <p className="rounded-2xl bg-primary-soft p-3 text-sm text-ink">
+            Cada resposta do aluno soma horas em todos os assuntos do plano ligados ao exercício.
+          </p>
         </aside>
 
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface/95 backdrop-blur">
@@ -448,7 +338,7 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
             {dirty ? (
               <ConfirmDialog
                 title="Descartar alterações?"
-                description="O que você mudou neste plano será perdido. Assuntos e exercícios criados continuam salvos."
+                description="O que você mudou neste plano será perdido. Assuntos e exercícios criados aqui continuam salvos."
                 confirmLabel="Descartar"
                 pendingLabel="Saindo…"
                 onConfirm={async () => {
@@ -484,33 +374,17 @@ export function PlanEditor({ planId, initialDraft, subjects: initialSubjects, ex
         onSaved={handleSubjectCreated}
       />
 
-      <ExercisePickerDialog
-        open={pickerOpen}
-        exercises={exercises}
-        subjects={subjects}
-        alreadyInPlan={draft.exercises.map((item) => item.exerciseId)}
-        suggestedSubjectIds={planSubjectIds}
-        onClose={() => setPickerOpen(false)}
-        onAdd={(ids) => {
-          setPickerOpen(false);
-          addExercises(ids);
-        }}
-        onCreateNew={() => {
-          setPickerOpen(false);
-          setCreatingExercise(true);
-        }}
-      />
-
-      <Modal open={creatingExercise} onClose={() => setCreatingExercise(false)} size="xl" locked title="Novo exercício" description="Ele é salvo na sua lista de exercícios e já entra neste plano.">
+      <Modal open={creatingExercise} onClose={() => setCreatingExercise(false)} size="xl" locked title="Novo exercício" description="Ele é salvo na sua lista de exercícios. Com um assunto do plano, já aparece para os alunos.">
         {creatingExercise && (
           <ExerciseEditor
             exerciseId={null}
             initialDraft={{ ...emptyDraft(), subjectIds: planSubjectIds.slice(0, 20) }}
             subjects={subjects}
+            skillGroups={skillGroups}
             embedded={{
               onSaved: handleExerciseCreated,
               onCancel: () => setCreatingExercise(false),
-              submitLabel: "Criar e adicionar ao plano",
+              submitLabel: "Criar exercício",
             }}
           />
         )}
@@ -551,14 +425,6 @@ function XIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.25" aria-hidden="true">
       <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ up = false }: { up?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.25" aria-hidden="true">
-      <path d={up ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

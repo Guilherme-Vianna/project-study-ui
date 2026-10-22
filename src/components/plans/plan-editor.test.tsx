@@ -22,8 +22,8 @@ const subjects = [
   { id: "s2", name: "Gramática" },
 ];
 const exercises: ExerciseOption[] = [
-  { id: "e1", title: "Seno de 30°", type: "multiple_choice", estimatedHours: 0.5, subjects: [subjects[0]] },
-  { id: "e2", title: "Redação", type: "open_answer", estimatedHours: null, subjects: [subjects[1]] },
+  { id: "e1", title: "Seno de 30°", subjects: [subjects[0]] },
+  { id: "e2", title: "Redação", subjects: [subjects[1]] },
 ];
 
 function renderEditor() {
@@ -72,29 +72,13 @@ describe("PlanEditor", () => {
     expect(screen.getByLabelText("Horas por semana de Inglês")).toBeInTheDocument();
   });
 
-  it("picks existing exercises and suggests adding their subjects", async () => {
+  it("shows the exercises that join the plan through its subjects", async () => {
     renderEditor();
-    await userEvent.click(screen.getByRole("button", { name: "Escolher exercícios" }));
-    const dialog = screen.getByRole("dialog", { name: "Escolher exercícios" });
-    await userEvent.click(within(dialog).getByRole("checkbox", { name: /Seno de 30°/ }));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Adicionar 1 ao plano" }));
-
+    expect(screen.getByText(/Escolha os assuntos para ver quais exercícios entram/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Trigonometria" }));
+    expect(screen.getByText(/exercício disponível/)).toBeInTheDocument();
     expect(screen.getByText("Seno de 30°")).toBeInTheDocument();
-    expect(screen.getByText("Padrão do exercício: 30 min")).toBeInTheDocument();
-    expect(screen.getByText(/usam um assunto que não está aqui/)).toHaveTextContent("Trigonometria");
-    await userEvent.click(screen.getByRole("button", { name: "Adicionar ao plano" }));
-    expect(screen.getByLabelText("Horas por semana de Trigonometria")).toBeInTheDocument();
-  });
-
-  it("asks for hours on an exercise without an estimate", async () => {
-    renderEditor();
-    await userEvent.type(screen.getByLabelText("Nome do plano"), "ENEM");
-    await userEvent.click(screen.getByRole("button", { name: "Escolher exercícios" }));
-    const dialog = screen.getByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("checkbox", { name: /Redação/ }));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Adicionar 1 ao plano" }));
-    await userEvent.click(screen.getByRole("button", { name: "Criar plano" }));
-    expect(screen.getByText(/não tem tempo estimado/)).toBeInTheDocument();
+    expect(screen.queryByText("Redação")).not.toBeInTheDocument();
   });
 
   it("creates an exercise inside the plan", async () => {
@@ -107,21 +91,9 @@ describe("PlanEditor", () => {
     const dialog = screen.getByRole("dialog", { name: "Novo exercício" });
     await userEvent.click(within(dialog).getByRole("radio", { name: /Resposta aberta/ }));
     await userEvent.type(within(dialog).getByLabelText("Título"), "Cosseno de 60°");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Criar e adicionar ao plano" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Criar exercício" }));
 
     await waitFor(() => expect(mocks.saveExerciseAction).toHaveBeenCalledWith(null, expect.anything(), { stay: true }));
-    expect(await screen.findByText(/Exercício “Cosseno de 60°” criado e adicionado/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tirar Cosseno de 60° do plano" })).toBeInTheDocument();
-  });
-
-  it("shows the estimated duration from the weekly goal", async () => {
-    renderEditor();
-    await userEvent.click(screen.getByRole("button", { name: "Trigonometria" }));
-    await userEvent.type(screen.getByLabelText("Horas por semana de Trigonometria"), "0,5");
-    await userEvent.click(screen.getByRole("button", { name: "Escolher exercícios" }));
-    const dialog = screen.getByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("checkbox", { name: /Seno/ }));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Adicionar 1 ao plano" }));
-    expect(screen.getByText(/os exercícios levam cerca de/)).toHaveTextContent("1 semana");
+    expect(await screen.findByText(/sem nenhum assunto do plano/)).toBeInTheDocument();
   });
 });

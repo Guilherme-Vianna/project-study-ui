@@ -7,10 +7,12 @@ import { PageLoading } from "@/components/app/page-loading";
 import { ExerciseEditor } from "@/components/exercises/exercise-editor";
 import { ApiError } from "@/lib/api/client";
 import { getExercise } from "@/lib/api/exercises";
+import { listSkillGroups } from "@/lib/api/skills";
 import { listMySubjects } from "@/lib/api/subjects";
 import { EXERCISES_PATH } from "@/lib/auth/constants";
 import { draftFromExercise } from "@/lib/exercises/from-api";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
+import { toSkillGroupOptions } from "@/lib/skills/from-api";
 
 export const metadata: Metadata = {
   title: "Editar exercício",
@@ -34,7 +36,7 @@ async function EditExerciseForm({ params }: Pick<PageProps<"/exercicios/[id]">, 
 
   let data;
   try {
-    data = await Promise.all([getExercise(id), listMySubjects()]);
+    data = await Promise.all([getExercise(id), listMySubjects(), listSkillGroups()]);
   } catch (error) {
     if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
       return (
@@ -49,12 +51,13 @@ async function EditExerciseForm({ params }: Pick<PageProps<"/exercicios/[id]">, 
     }
     return <ApiUnavailable retryHref={retry} />;
   }
-  const [exercise, subjects] = data;
+  const [exercise, subjects, groups] = data;
   return (
     <ExerciseEditor
       exerciseId={exercise.id}
       initialDraft={draftFromExercise(exercise)}
       subjects={subjects.map(({ id: subjectId, name }) => ({ id: subjectId, name }))}
+      skillGroups={toSkillGroupOptions(groups)}
     />
   );
 }

@@ -11,6 +11,7 @@ export function draftFromExercise(exercise: Exercise): ExerciseDraft {
     expectedAnswer: exercise.expected_answer ?? "",
     estimatedHours: exercise.estimated_hours === null ? "" : String(exercise.estimated_hours).replace(".", ","),
     subjectIds: exercise.subjects.map((subject) => subject.id),
+    skillIds: exercise.skills.map((skill) => skill.id),
     images: images.map((link) => ({
       imageId: link.image.id,
       url: link.image.url,

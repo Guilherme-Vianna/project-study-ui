@@ -23,7 +23,7 @@ export default function ExercisesPage({ searchParams }: PageProps<"/exercicios">
     <>
       <PageHeader
         title="Exercícios"
-        description="Questões de múltipla escolha ou de resposta aberta, com imagens e assuntos, para usar nos planos de estudo."
+        description="Questões de múltipla escolha ou de resposta aberta. Os alunos veem as que têm algum assunto do plano deles."
         actions={
           <Link href={`${EXERCISES_PATH}/novo`} className={NEW_EXERCISE_LINK}>
             <PlusIcon />
@@ -63,6 +63,7 @@ async function ExercisesContent({ searchParams }: Pick<PageProps<"/exercicios">,
           type: exercise.type,
           statementPreview: exercise.statement ? exercise.statement.slice(0, 300) : null,
           subjects: exercise.subjects,
+          skills: exercise.skills,
           hoursLabel: exercise.estimated_hours ? formatHours(exercise.estimated_hours) : null,
           imageCount: exercise.images.length + exercise.options.filter((option) => option.image).length,
           optionCount: exercise.options.length,

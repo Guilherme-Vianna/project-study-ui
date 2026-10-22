@@ -9,17 +9,10 @@ export function toSubjectOptions(subjects: Subject[]): SubjectOption[] {
 }
 
 export function toExerciseOptions(exercises: Exercise[]): ExerciseOption[] {
-  return exercises.map((exercise) => ({
-    id: exercise.id,
-    title: exercise.title,
-    type: exercise.type,
-    estimatedHours: exercise.estimated_hours,
-    subjects: exercise.subjects,
-  }));
+  return exercises.map(({ id, title, subjects }) => ({ id, title, subjects }));
 }
 
 export function planToDraft(plan: StudyPlan): PlanDraft {
-  const estimates = new Map(plan.exercises.map((item) => [item.exercise.id, item.exercise.estimated_hours]));
   return {
     title: plan.title,
     description: plan.description ?? "",
@@ -28,11 +21,5 @@ export function planToDraft(plan: StudyPlan): PlanDraft {
       weeklyHours: hoursToInput(item.weekly_hours),
       weekdays: item.weekdays,
     })),
-    exercises: [...plan.exercises]
-      .sort((a, b) => a.position - b.position)
-      .map((item) => ({
-        exerciseId: item.exercise.id,
-        allocatedHours: estimates.get(item.exercise.id) === item.allocated_hours ? "" : hoursToInput(item.allocated_hours),
-      })),
   };
 }

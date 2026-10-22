@@ -24,3 +24,15 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR", {
 export function formatDate(iso: string) {
   return dateFormat.format(new Date(iso));
 }
+
+const dateTimeFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+
+export function formatDateTime(iso: string) {
+  return dateTimeFormat.format(new Date(iso));
+}

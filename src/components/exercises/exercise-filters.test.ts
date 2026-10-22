@@ -7,6 +7,7 @@ const item = (id: string, title: string, overrides: Partial<ExerciseItem> = {}):
   type: "multiple_choice",
   statementPreview: null,
   subjects: [],
+  skills: [],
   hoursLabel: null,
   imageCount: 0,
   optionCount: 4,

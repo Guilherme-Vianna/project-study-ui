@@ -5,15 +5,30 @@ import { Suspense, type ReactNode } from "react";
 import { ApiUnavailable } from "@/components/app/api-unavailable";
 import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
+import { PlanProgress } from "@/components/plans/plan-progress";
 import { CompleteProfileCard } from "@/components/profile/complete-profile-card";
 import { Alert } from "@/components/ui/alert";
 import { BooksIcon, CalendarIcon, ClipboardIcon, UsersIcon } from "@/components/ui/icons";
 import { profileOf } from "@/lib/api/account";
+import { listAttempts } from "@/lib/api/attempts";
+import { ApiError } from "@/lib/api/client";
 import { listMyInvites, listMyStudents, listMyTeachers, personName } from "@/lib/api/enrollments";
 import { listMyExercises } from "@/lib/api/exercises";
-import { listMyPlans } from "@/lib/api/plans";
+import { getMyProgress, getMyStudyPlan, listMyPlans } from "@/lib/api/plans";
+import { listSkillGroups } from "@/lib/api/skills";
 import { listMySubjects } from "@/lib/api/subjects";
-import { EXERCISES_PATH, HOME_PATH, ONBOARDING_PATH, PLANS_PATH, STUDENTS_PATH, SUBJECTS_PATH } from "@/lib/auth/constants";
+import {
+  EXERCISES_PATH,
+  HOME_PATH,
+  MY_PLAN_PATH,
+  ONBOARDING_PATH,
+  PLANS_PATH,
+  PRACTICE_PATH,
+  REVIEWS_PATH,
+  SKILLS_PATH,
+  STUDENTS_PATH,
+  SUBJECTS_PATH,
+} from "@/lib/auth/constants";
 import { loadCurrentAccount } from "@/lib/auth/current-account";
 import { initialsOf } from "@/lib/people";
 import { isRole, ROLE_COPY } from "@/lib/profile/roles";
@@ -97,11 +112,19 @@ function plural(count: number, one: string, many: string) {
 async function TeacherOverview() {
   let data;
   try {
-    data = await Promise.all([listMyStudents(), listMyInvites(), listMySubjects(), listMyExercises(), listMyPlans()]);
+    data = await Promise.all([
+      listMyStudents(),
+      listMyInvites(),
+      listMySubjects(),
+      listMyExercises(),
+      listMyPlans(),
+      listAttempts({ review_status: "pending" }, { limit: 1 }),
+      listSkillGroups(),
+    ]);
   } catch {
     return <ApiUnavailable retryHref={HOME_PATH} />;
   }
-  const [students, invites, subjects, exercises, plans] = data;
+  const [students, invites, subjects, exercises, plans, pending, skillGroups] = data;
   const activeInvites = invites.filter((invite) => invite.is_active).length;
 
   return (
@@ -122,11 +145,33 @@ async function TeacherOverview() {
         title="Planos de estudo"
         summary={
           plans.length === 0
-            ? "Monte um plano com metas semanais e exercícios e atribua aos seus alunos."
+            ? "Monte um plano com metas semanais por assunto e atribua aos seus alunos."
             : plural(plans.length, "plano criado", "planos criados")
         }
         href={PLANS_PATH}
         action={plans.length === 0 ? "Criar plano" : "Ver planos"}
+      />
+      <OverviewCard
+        icon={<ClipboardIcon className="size-5" />}
+        title="Correções"
+        summary={
+          pending.total === 0
+            ? "Nenhuma resposta esperando correção."
+            : `${plural(pending.total, "resposta esperando", "respostas esperando")} sua correção.`
+        }
+        href={REVIEWS_PATH}
+        action={pending.total === 0 ? "Ver respostas" : "Corrigir agora"}
+      />
+      <OverviewCard
+        icon={<BooksIcon className="size-5" />}
+        title="Habilidades"
+        summary={
+          skillGroups.length === 0
+            ? "Crie grupos com níveis, como Inglês → Listening, e avalie a evolução de cada aluno."
+            : plural(skillGroups.length, "grupo de habilidades", "grupos de habilidades")
+        }
+        href={SKILLS_PATH}
+        action={skillGroups.length === 0 ? "Criar habilidades" : "Ver habilidades"}
       />
       <OverviewCard
         icon={<BooksIcon className="size-5" />}
@@ -154,13 +199,24 @@ async function TeacherOverview() {
   );
 }
 
-async function StudentOverview() {
-  let teachers;
+async function loadStudentPlan() {
   try {
-    teachers = await listMyTeachers();
+    const [plan, progress] = await Promise.all([getMyStudyPlan(), getMyProgress()]);
+    return { plan, progress };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+async function StudentOverview() {
+  let data;
+  try {
+    data = await Promise.all([listMyTeachers(), loadStudentPlan()]);
   } catch {
     return <ApiUnavailable retryHref={HOME_PATH} />;
   }
+  const [teachers, current] = data;
 
   if (teachers.length === 0) {
     return (
@@ -175,6 +231,34 @@ async function StudentOverview() {
   }
 
   return (
+    <div className="flex flex-col gap-6">
+      {current ? (
+        <section className="flex flex-col gap-5 rounded-3xl border border-border bg-surface p-6 sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+                <CalendarIcon className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm font-medium text-primary">Seu plano</p>
+                <h2 className="text-xl font-semibold text-ink">{current.plan.title}</h2>
+              </div>
+            </div>
+            <Link
+              href={PRACTICE_PATH}
+              className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 font-medium text-white hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Praticar
+            </Link>
+          </div>
+          <PlanProgress progress={current.progress} />
+          <Link href={MY_PLAN_PATH} className="self-start rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline">
+            Ver metas por assunto
+          </Link>
+        </section>
+      ) : (
+        <p className="rounded-2xl bg-canvas px-4 py-3 text-sm text-muted">Seu plano de estudo vai aparecer aqui quando o professor atribuir um.</p>
+      )}
     <Panel>
       <h2 className="text-xl font-semibold text-ink">Seus professores</h2>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -193,7 +277,7 @@ async function StudentOverview() {
           );
         })}
       </ul>
-      <p className="mt-4 text-sm text-muted">Seus planos de estudo vão aparecer aqui quando o professor enviar.</p>
     </Panel>
+    </div>
   );
 }

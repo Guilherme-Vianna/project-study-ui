@@ -1,16 +1,16 @@
 import "server-only";
 import type { PlanPayload, Weekday } from "@/lib/plans/model";
-import { apiFetch, fetchAll } from "./client";
-import type { Exercise } from "./exercises";
+import { apiFetch, fetchAll, queryString } from "./client";
+import type { TeacherPublic } from "./enrollments";
+
+export type PlanSubject = { subject: { id: string; name: string }; weekly_hours: number; weekdays: Weekday[] };
 
 export type StudyPlan = {
   id: string;
   title: string;
   description: string | null;
   required_weekly_hours: number;
-  allocated_hours: number;
-  subjects: { subject: { id: string; name: string }; weekly_hours: number; weekdays: Weekday[] }[];
-  exercises: { position: number; allocated_hours: number; exercise: Exercise }[];
+  subjects: PlanSubject[];
   created_at: string;
   updated_at: string;
 };
@@ -23,17 +23,30 @@ export type Assignment = {
   created_at: string;
 };
 
+export type StudentStudyPlan = {
+  assignment_id: string;
+  assigned_at: string;
+  teacher: TeacherPublic;
+  plan_id: string;
+  title: string;
+  description: string | null;
+  required_weekly_hours: number;
+  available_exercises: number;
+  subjects: PlanSubject[];
+};
+
 export type Progress = {
   assignment_id: string;
   week_start: string;
   week_end: string;
   required_weekly_hours: number;
   week_completed_hours: number;
-  allocated_hours: number;
   completed_hours: number;
-  total_exercises: number;
-  completed_exercises: number;
-  completion_rate: number;
+  available_exercises: number;
+  attempted_exercises: number;
+  total_attempts: number;
+  pending_reviews: number;
+  approved_attempts: number;
   subjects: {
     subject: { id: string; name: string };
     weekdays: Weekday[];
@@ -79,6 +92,16 @@ export function endAssignment(planId: string, assignmentId: string) {
   return apiFetch<void>(`${planPath(planId)}/assignments/${encodeURIComponent(assignmentId)}`, { method: "DELETE" });
 }
 
-export function getAssignmentProgress(planId: string, assignmentId: string) {
-  return apiFetch<Progress>(`${planPath(planId)}/assignments/${encodeURIComponent(assignmentId)}/progress`);
+export function getAssignmentProgress(planId: string, assignmentId: string, weekOf?: string) {
+  return apiFetch<Progress>(
+    `${planPath(planId)}/assignments/${encodeURIComponent(assignmentId)}/progress${queryString({ week_of: weekOf })}`,
+  );
+}
+
+export function getMyStudyPlan() {
+  return apiFetch<StudentStudyPlan>("/students/me/study-plan");
+}
+
+export function getMyProgress(weekOf?: string) {
+  return apiFetch<Progress>(`/students/me/study-plan/progress${queryString({ week_of: weekOf })}`);
 }

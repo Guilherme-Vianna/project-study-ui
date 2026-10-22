@@ -16,6 +16,7 @@ export const LIMITS = {
   text: 10000,
   options: { min: 2, max: 10 },
   subjects: 20,
+  skills: 20,
   images: 20,
   hours: 168,
   imageBytes: 5 * 1024 * 1024,
@@ -34,6 +35,7 @@ export type ExerciseDraft = {
   expectedAnswer: string;
   estimatedHours: string;
   subjectIds: string[];
+  skillIds: string[];
   images: (DraftImage & { placement: ImagePlacement })[];
   options: DraftOption[];
 };
@@ -45,6 +47,7 @@ export type ExercisePayload = {
   expected_answer: string | null;
   estimated_hours: number | null;
   subject_ids: string[];
+  skill_ids: string[];
   images: { image_id: string; placement: ImagePlacement }[];
   options: { text: string | null; is_correct: boolean; image_id: string | null }[];
 };
@@ -67,6 +70,7 @@ export function emptyDraft(): ExerciseDraft {
     expectedAnswer: "",
     estimatedHours: "",
     subjectIds: [],
+    skillIds: [],
     images: [],
     options: [emptyOption(), emptyOption(), emptyOption(), emptyOption()],
   };
@@ -105,6 +109,7 @@ export function toExercisePayload(draft: ExerciseDraft): ExercisePayload {
     expected_answer: multiple ? null : nullable(draft.expectedAnswer),
     estimated_hours: parseHours(draft.estimatedHours) ?? null,
     subject_ids: [...new Set(draft.subjectIds)],
+    skill_ids: [...new Set(draft.skillIds)],
     images: draft.images.map((image) => ({ image_id: image.imageId, placement: image.placement })),
     options: multiple
       ? draft.options.map((option) => ({

@@ -25,7 +25,7 @@ vi.mock("@/lib/auth/session", () => ({ getSessionUser, getSessionToken: vi.fn() 
 
 const { assignPlanAction, deletePlanAction, endAssignmentAction, savePlanAction } = await import("./actions");
 
-const plan: PlanDraft = { title: "ENEM", description: "", subjects: [], exercises: [] };
+const plan: PlanDraft = { title: "ENEM", description: "", subjects: [] };
 
 async function redirectOf(promise: Promise<unknown>) {
   try {
@@ -44,30 +44,30 @@ describe("plan actions", () => {
 
   it("creates a plan and opens it", async () => {
     api.createPlan.mockResolvedValue({ id: "p1" });
-    expect((await redirectOf(savePlanAction(null, plan, []))).redirect).toBe("/planos/p1?salvo=criado");
+    expect((await redirectOf(savePlanAction(null, plan))).redirect).toBe("/planos/p1?salvo=criado");
   });
 
   it("replaces an existing plan", async () => {
     api.replacePlan.mockResolvedValue({ id: "p1" });
-    expect((await redirectOf(savePlanAction("p1", plan, []))).redirect).toBe("/planos/p1?salvo=editado");
+    expect((await redirectOf(savePlanAction("p1", plan))).redirect).toBe("/planos/p1?salvo=editado");
     expect(api.replacePlan).toHaveBeenCalledWith("p1", expect.objectContaining({ title: "ENEM" }));
   });
 
   it("validates before calling the API", async () => {
-    const outcome = await redirectOf(savePlanAction(null, { ...plan, title: "" }, []));
+    const outcome = await redirectOf(savePlanAction(null, { ...plan, title: "" }));
     expect(outcome.value).toMatchObject({ ok: false, errors: { title: expect.any(String) } });
     expect(api.createPlan).not.toHaveBeenCalled();
   });
 
-  it("explains a missing exercise hour reported by the API", async () => {
-    api.createPlan.mockRejectedValue(new ApiError(422, "Exercise x needs allocated_hours (it has no estimated_hours)"));
-    const outcome = await redirectOf(savePlanAction(null, plan, []));
-    expect(outcome.value).toMatchObject({ errors: { exercises: expect.stringMatching(/sem horas/) } });
+  it("explains a deleted subject reported by the API", async () => {
+    api.createPlan.mockRejectedValue(new ApiError(422, "Unknown subjects"));
+    const outcome = await redirectOf(savePlanAction(null, plan));
+    expect(outcome.value).toMatchObject({ formError: expect.stringMatching(/assunto escolhido foi excluído/) });
   });
 
   it("explains why an assigned plan cannot be deleted", async () => {
     api.deletePlan.mockRejectedValue(new ApiError(409, "assigned"));
-    expect(await deletePlanAction("p1")).toEqual({ ok: false, error: expect.stringMatching(/Encerre as atribuições/) });
+    expect(await deletePlanAction("p1")).toEqual({ ok: false, error: expect.stringMatching(/Edite o plano/) });
   });
 
   it("deletes a plan and returns to the list", async () => {

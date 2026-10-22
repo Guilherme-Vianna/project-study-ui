@@ -1,6 +1,7 @@
 import "server-only";
 import type { ExercisePayload, ExerciseType, ImagePlacement } from "@/lib/exercises/model";
 import { apiFetch, fetchAll } from "./client";
+import type { SkillSummary } from "./skills";
 
 export type ImageRead = {
   id: string;
@@ -20,6 +21,7 @@ export type Exercise = {
   expected_answer: string | null;
   estimated_hours: number | null;
   subjects: { id: string; name: string }[];
+  skills: SkillSummary[];
   images: { placement: ImagePlacement; position: number; image: ImageRead }[];
   options: { id: string; position: number; text: string | null; is_correct: boolean; image: ImageRead | null }[];
   created_at: string;

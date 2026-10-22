@@ -32,6 +32,7 @@ describe("toExercisePayload", () => {
         expectedAnswer: "ignored",
         estimatedHours: "0,5",
         subjectIds: ["s1", "s1", "s2"],
+        skillIds: ["k1", "k1"],
         images: [{ imageId: "i1", url: null, name: null, placement: "statement" }],
       }),
     );
@@ -42,6 +43,7 @@ describe("toExercisePayload", () => {
       expected_answer: null,
       estimated_hours: 0.5,
       subject_ids: ["s1", "s2"],
+      skill_ids: ["k1"],
       images: [{ image_id: "i1", placement: "statement" }],
       options: [
         { text: "1/2", is_correct: true, image_id: null },
