@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { ApiUnavailable } from "@/components/app/api-unavailable";
+import { profileOf } from "@/lib/api/account";
 import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
 import { HOME_PATH, ONBOARDING_PATH } from "@/lib/auth/constants";
@@ -37,7 +38,7 @@ export default function OnboardingPage() {
 async function RoleChoice() {
   const { user, account } = await loadCurrentAccount();
   if (!account) return <ApiUnavailable retryHref={ONBOARDING_PATH} />;
-  if (account.role) redirect(HOME_PATH);
+  if (account.role) redirect(profileOf(account) ? HOME_PATH : ROLE_COPY[account.role].signupPath);
 
   const firstName = (account.name ?? user.name ?? "").split(" ")[0];
 

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { ApiUnavailable } from "@/components/app/api-unavailable";
+import { profileOf } from "@/lib/api/account";
 import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
 import { Alert } from "@/components/ui/alert";
@@ -43,8 +44,8 @@ async function RoleSignupForm({ role, searchParams }: { role: Role; searchParams
   const [{ user, account }, query] = await Promise.all([loadCurrentAccount(), searchParams]);
   const invite = role === "student" && typeof query.convite === "string" ? query.convite : null;
   if (!account) return <ApiUnavailable retryHref={ROLE_COPY[role].signupPath} />;
-  if (account.role === role) redirect(invite ? invitePath(invite) : HOME_PATH);
-  if (account.role) return <Alert tone="error">{otherRoleMessage(role)}</Alert>;
+  if (account.role === role && profileOf(account)) redirect(invite ? invitePath(invite) : HOME_PATH);
+  if (account.role && account.role !== role) return <Alert tone="error">{otherRoleMessage(role)}</Alert>;
 
   return (
     <ProfileForm
