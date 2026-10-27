@@ -1,3 +1,5 @@
+import { createKeyFactory } from "@/lib/draft-keys";
+
 export type ExerciseType = "multiple_choice" | "open_answer";
 export type ImagePlacement = "statement" | "attachment";
 
@@ -52,11 +54,7 @@ export type ExercisePayload = {
   options: { text: string | null; is_correct: boolean; image_id: string | null }[];
 };
 
-let keySeed = 0;
-export function newOptionKey() {
-  keySeed += 1;
-  return `option-${keySeed}`;
-}
+export const newOptionKey = createKeyFactory("option");
 
 export function emptyOption(): DraftOption {
   return { key: newOptionKey(), text: "", isCorrect: false, image: null };

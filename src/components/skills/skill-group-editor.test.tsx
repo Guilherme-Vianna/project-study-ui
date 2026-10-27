@@ -31,6 +31,26 @@ describe("SkillGroupEditor", () => {
     expect(draft.skills.map((skill: { name: string }) => skill.name)).toEqual(["Listening"]);
   });
 
+  it("keeps server-built items independent from items added in the browser", async () => {
+    const serverItem = (index: number, name: string) => ({ key: `skill-item-${index}`, id: null, name, description: "" });
+    const initialDraft = { name: "Inglês", description: "", levels: [serverItem(1, "Iniciante"), serverItem(2, "Avançado")], skills: [] };
+    vi.resetModules();
+    const { SkillGroupEditor: FreshEditor } = await import("./skill-group-editor");
+    render(<FreshEditor groupId={null} initialDraft={initialDraft} existingNames={[]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Adicionar nível" }));
+    await userEvent.type(screen.getByLabelText("Nome do nível 3"), "Fluente");
+    await userEvent.click(screen.getByRole("button", { name: "Mover Fluente para cima" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mover Fluente para cima" }));
+
+    expect(screen.getByLabelText("Nome do nível 1")).toHaveValue("Fluente");
+    expect(screen.getByLabelText("Nome do nível 2")).toHaveValue("Iniciante");
+    expect(screen.getByLabelText("Nome do nível 3")).toHaveValue("Avançado");
+
+    await userEvent.click(screen.getByRole("button", { name: "Remover Fluente" }));
+    expect(screen.getAllByRole("textbox", { name: /Nome do nível/ }).map((input) => (input as HTMLInputElement).value)).toEqual(["Iniciante", "Avançado"]);
+  });
+
   it("blocks a duplicated group name and keeps the last level", async () => {
     render(<SkillGroupEditor groupId={null} initialDraft={{ ...emptySkillGroupDraft(), levels: emptySkillGroupDraft().levels.slice(0, 1) }} existingNames={["Inglês"]} />);
     expect(screen.getByRole("button", { name: "Remover Iniciante" })).toBeDisabled();

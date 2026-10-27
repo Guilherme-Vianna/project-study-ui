@@ -1,3 +1,5 @@
+import { createKeyFactory } from "@/lib/draft-keys";
+
 export const SKILL_LIMITS = {
   name: 100,
   description: 2000,
@@ -27,11 +29,7 @@ export type SkillGroupPayload = {
   skills: ItemPayload[];
 };
 
-let keySeed = 0;
-export function newItemKey() {
-  keySeed += 1;
-  return `skill-item-${keySeed}`;
-}
+export const newItemKey = createKeyFactory("skill-item");
 
 export function emptyItem(name = ""): SkillItemDraft {
   return { key: newItemKey(), id: null, name, description: "" };

@@ -62,11 +62,13 @@ export function SkillGroupEditor({ groupId, initialDraft, existingNames }: Skill
     clearItemError(key);
   }
 
-  function moveItem(list: ListKey, index: number, delta: number) {
+  function moveItem(list: ListKey, key: string, delta: number) {
     change((current) => {
       const items = [...current[list]];
-      const [moved] = items.splice(index, 1);
-      items.splice(index + delta, 0, moved);
+      const index = items.findIndex((item) => item.key === key);
+      const target = index + delta;
+      if (index < 0 || target < 0 || target >= items.length) return current;
+      [items[index], items[target]] = [items[target], items[index]];
       return { ...current, [list]: items };
     });
   }
@@ -239,7 +241,7 @@ type ItemListProps = {
   noun: string;
   minItems?: number;
   onRename: (list: ListKey, key: string, name: string) => void;
-  onMove: (list: ListKey, index: number, delta: number) => void;
+  onMove: (list: ListKey, key: string, delta: number) => void;
   onRemove: (list: ListKey, key: string) => void;
 };
 
@@ -280,10 +282,10 @@ function ItemList({ list, items, errors, numbered = false, pending, noun, minIte
                 </p>
               )}
             </div>
-            <ItemButton label={`Mover ${label} para cima`} disabled={pending || index === 0} onClick={() => onMove(list, index, -1)}>
+            <ItemButton label={`Mover ${label} para cima`} disabled={pending || index === 0} onClick={() => onMove(list, item.key, -1)}>
               <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
             </ItemButton>
-            <ItemButton label={`Mover ${label} para baixo`} disabled={pending || index === items.length - 1} onClick={() => onMove(list, index, 1)}>
+            <ItemButton label={`Mover ${label} para baixo`} disabled={pending || index === items.length - 1} onClick={() => onMove(list, item.key, 1)}>
               <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
             </ItemButton>
             <ItemButton label={`Remover ${label}`} danger disabled={pending || items.length <= minItems} onClick={() => onRemove(list, item.key)}>
