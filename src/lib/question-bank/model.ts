@@ -46,6 +46,7 @@ export type GeneratedDraft = {
   auto_fixes: number;
   teacher_revisions: number;
   issue: string | null;
+  skill_ids: string[];
   question: GeneratedQuestion;
 };
 
@@ -96,6 +97,7 @@ function clip(value: string, max: number) {
 export function toGeneratedExercisePayload(
   question: GeneratedQuestion,
   subjects: { id: string; name: string }[],
+  skillIds: string[] = [],
 ): ExercisePayload {
   const multiple = question.type === "multiple_choice";
   const answer = [question.expected_answer?.trim(), question.explanation.trim() && `Resolução: ${question.explanation.trim()}`]
@@ -108,7 +110,7 @@ export function toGeneratedExercisePayload(
     expected_answer: multiple ? null : clip(answer, LIMITS.text) || null,
     estimated_hours: null,
     subject_ids: matchingSubjectIds(question, subjects).slice(0, LIMITS.subjects),
-    skill_ids: [],
+    skill_ids: [...new Set(skillIds)].slice(0, LIMITS.skills),
     images: [],
     options: multiple
       ? question.options.slice(0, LIMITS.options.max).map((option) => ({
