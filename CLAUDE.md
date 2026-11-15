@@ -92,6 +92,10 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 - "Pedir ajuste" (≤ `max_teacher_revisions`) sends the teacher's feedback; only that card shows the compact progress
   and is replaced by the new version. "Salvar como exercício" (`saveGeneratedQuestionAction` → `POST /exercises`)
   attaches teacher subjects matching the question subject/topic; open answers keep the solution in `expected_answer`.
+- Skills: the API suggests `skill_ids` from the teacher's skills; each card shows `SkillPicker` with them pre-checked
+  (the page loads `listSkillGroups`) and saves the teacher's final choice. Cards remount after an adjustment.
+- Layout: two columns on `lg` (sticky form, progress/results on the right); on small screens the page scrolls to the
+  progress and focuses the results heading.
 
 ## Study plans
 
