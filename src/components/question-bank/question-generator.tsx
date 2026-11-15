@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { SkillPicker } from "@/components/exercises/skill-picker";
 import { TextAreaField } from "@/components/ui/text-area-field";
 import { EXERCISES_PATH } from "@/lib/auth/constants";
 import { EXERCISE_TYPE_LABELS, optionLetter, type ExerciseType } from "@/lib/exercises/model";
@@ -28,6 +29,7 @@ import {
   streamGeneration,
   type ProgressState,
 } from "@/lib/question-bank/stream";
+import type { SkillGroupOption } from "@/lib/skills/model";
 import { GenerationProgress, QuestionSkeleton } from "./generation-progress";
 
 const controlClass =
@@ -54,7 +56,15 @@ function errorMessage(error: unknown) {
   return error instanceof GenerationStreamError ? error.message : "Não foi possível gerar agora. Tente de novo.";
 }
 
-export function QuestionGenerator({ suggestions, total }: { suggestions: Suggestion[]; total: number }) {
+export function QuestionGenerator({
+  suggestions,
+  total,
+  skillGroups,
+}: {
+  suggestions: Suggestion[];
+  total: number;
+  skillGroups: SkillGroupOption[];
+}) {
   const formId = useId();
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const [prompt, setPrompt] = useState("");
@@ -140,9 +150,9 @@ export function QuestionGenerator({ suggestions, total }: { suggestions: Suggest
     }
   }
 
-  async function save(draft: GeneratedDraft) {
+  async function save(draft: GeneratedDraft, skillIds: string[]) {
     setSaves((current) => ({ ...current, [draft.id]: { status: "saving" } }));
-    const response = await saveGeneratedQuestionAction(draft.question);
+    const response = await saveGeneratedQuestionAction(draft.question, skillIds);
     setSaves((current) => ({
       ...current,
       [draft.id]: response.ok ? { status: "saved", exerciseId: response.exerciseId } : { status: "error", error: response.error },
@@ -282,12 +292,13 @@ export function QuestionGenerator({ suggestions, total }: { suggestions: Suggest
             <ol className="flex flex-col gap-4">
               {ready.map((draft, index) => (
                 <QuestionCard
-                  key={draft.id}
+                  key={`${draft.id}-${draft.teacher_revisions}`}
+                  skillGroups={skillGroups}
                   number={index + 1}
                   draft={draft}
                   maxRevisions={session.max_teacher_revisions}
                   save={saves[draft.id]}
-                  onSave={() => save(draft)}
+                  onSave={(skillIds) => save(draft, skillIds)}
                   adjusting={adjusting?.questionId === draft.id ? adjusting.progress : null}
                   adjustDisabled={adjusting !== null}
                   adjustError={adjustErrors[draft.id]}
@@ -370,6 +381,7 @@ function Badge({ tone, children }: { tone: "success" | "accent" | "muted" | "pri
 function QuestionCard({
   number,
   draft,
+  skillGroups,
   maxRevisions,
   save,
   onSave,
@@ -380,9 +392,10 @@ function QuestionCard({
 }: {
   number: number;
   draft: GeneratedDraft;
+  skillGroups: SkillGroupOption[];
   maxRevisions: number;
   save: SaveState | undefined;
-  onSave: () => void;
+  onSave: (skillIds: string[]) => void;
   adjusting: ProgressState | null;
   adjustDisabled: boolean;
   adjustError: string | undefined;
@@ -392,6 +405,8 @@ function QuestionCard({
   const [open, setOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [feedbackError, setFeedbackError] = useState<string>();
+  const [skillIds, setSkillIds] = useState(draft.skill_ids);
+  const hasSkills = skillGroups.some((group) => group.skills.length > 0);
   const remaining = maxRevisions - draft.teacher_revisions;
 
   async function submitAdjustment() {
@@ -462,6 +477,18 @@ function QuestionCard({
         </>
       )}
 
+      {!adjusting && hasSkills && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-ink">
+            Habilidades{" "}
+            <span className="font-normal text-muted">
+              {draft.skill_ids.length > 0 ? "— sugeridas pela IA, ajuste antes de salvar" : "— marque as que esta questão treina"}
+            </span>
+          </p>
+          <SkillPicker groups={skillGroups} selected={skillIds} onChange={setSkillIds} disabled={save?.status === "saved"} />
+        </div>
+      )}
+
       {draft.issue && !adjusting && <Alert tone="info">{draft.issue}</Alert>}
       {adjustError && <Alert tone="error">{adjustError}</Alert>}
 
@@ -500,7 +527,7 @@ function QuestionCard({
               </Link>
             </p>
           ) : (
-            <Button variant="secondary" onClick={onSave} loading={save?.status === "saving"} loadingLabel="Salvando…">
+            <Button variant="secondary" onClick={() => onSave(skillIds)} loading={save?.status === "saving"} loadingLabel="Salvando…">
               Salvar como exercício
             </Button>
           )}

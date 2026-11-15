@@ -6,9 +6,11 @@ import { PageLoading } from "@/components/app/page-loading";
 import { QuestionGenerator } from "@/components/question-bank/question-generator";
 import { Alert } from "@/components/ui/alert";
 import { getQuestionCatalog } from "@/lib/api/question-bank";
+import { listSkillGroups } from "@/lib/api/skills";
 import { EXERCISES_PATH, GENERATE_QUESTIONS_PATH } from "@/lib/auth/constants";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { suggestions } from "@/lib/question-bank/model";
+import { toSkillGroupOptions } from "@/lib/skills/from-api";
 
 export const metadata: Metadata = {
   title: "Gerar questões com IA",
@@ -33,12 +35,13 @@ export default function GenerateQuestionsPage() {
 async function GenerateContent() {
   const account = await requireTeacherAccount();
   if (!account) return <ApiUnavailable retryHref={GENERATE_QUESTIONS_PATH} />;
-  let catalog;
+  let data;
   try {
-    catalog = await getQuestionCatalog();
+    data = await Promise.all([getQuestionCatalog(), listSkillGroups()]);
   } catch {
     return <ApiUnavailable retryHref={GENERATE_QUESTIONS_PATH} />;
   }
+  const [catalog, groups] = data;
   if (catalog.total === 0) {
     return (
       <div className="max-w-2xl">
@@ -46,5 +49,11 @@ async function GenerateContent() {
       </div>
     );
   }
-  return <QuestionGenerator suggestions={suggestions(catalog)} total={catalog.total} />;
+  return (
+    <QuestionGenerator
+      suggestions={suggestions(catalog)}
+      total={catalog.total}
+      skillGroups={toSkillGroupOptions(groups)}
+    />
+  );
 }

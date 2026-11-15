@@ -15,17 +15,26 @@ async function requireSession() {
   if (!(await getSessionUser())) redirect(LOGIN_PATH);
 }
 
-export async function saveGeneratedQuestionAction(question: GeneratedQuestion): Promise<SaveGeneratedResult> {
+export async function saveGeneratedQuestionAction(
+  question: GeneratedQuestion,
+  skillIds: string[],
+): Promise<SaveGeneratedResult> {
   await requireSession();
   try {
     const subjects = await listMySubjects();
-    const exercise = await createExercise(toGeneratedExercisePayload(question, subjects));
+    const exercise = await createExercise(toGeneratedExercisePayload(question, subjects, skillIds));
     refresh();
     return { ok: true, exerciseId: exercise.id };
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 401) redirect(LOGIN_PATH);
-      if (error.status === 422) return { ok: false, error: "Esta questão não pôde ser salva como exercício. Gere outra." };
+      if (error.status === 422) {
+        const detail = typeof error.detail === "string" ? error.detail : "";
+        if (detail.startsWith("Unknown skills")) {
+          return { ok: false, error: "Alguma habilidade marcada foi excluída. Revise as habilidades e salve de novo." };
+        }
+        return { ok: false, error: "Esta questão não pôde ser salva como exercício. Gere outra." };
+      }
     }
     return { ok: false, error: "Não foi possível salvar agora. Tente de novo." };
   }

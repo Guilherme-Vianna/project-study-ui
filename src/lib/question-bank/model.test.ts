@@ -65,6 +65,10 @@ describe("toGeneratedExercisePayload", () => {
     expect(payload.expected_answer).toBe("24 m³\n\nResolução: V = 2·3·4 = 24");
   });
 
+  it("sends the chosen skills once each", () => {
+    expect(toGeneratedExercisePayload(question(), [], ["k1", "k2", "k1"]).skill_ids).toEqual(["k1", "k2"]);
+  });
+
   it("clips the title to the API limit", () => {
     expect(toGeneratedExercisePayload(question({ title: "x".repeat(250) }), []).title).toHaveLength(200);
   });
