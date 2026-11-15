@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextAreaField } from "@/components/ui/text-area-field";
@@ -38,6 +38,12 @@ const GENERATIONS_URL = "/api/question-generations";
 type SaveState = { status: "saving" } | { status: "saved"; exerciseId: string } | { status: "error"; error: string };
 type Adjusting = { questionId: string; progress: ProgressState } | null;
 
+function revealSmoothly(element: HTMLElement | null) {
+  if (!element) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  element.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+}
+
 function without<T>(record: Record<string, T>, key: string) {
   const copy = { ...record };
   delete copy[key];
@@ -63,6 +69,19 @@ export function QuestionGenerator({ suggestions, total }: { suggestions: Suggest
   const [adjusting, setAdjusting] = useState<Adjusting>(null);
   const [adjustErrors, setAdjustErrors] = useState<Record<string, string>>({});
   const pending = progress !== null;
+  const progressRef = useRef<HTMLElement>(null);
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (pending) revealSmoothly(progressRef.current);
+  }, [pending]);
+
+  const sessionId = session?.id;
+  useEffect(() => {
+    if (!sessionId) return;
+    revealSmoothly(resultsHeadingRef.current);
+    resultsHeadingRef.current?.focus({ preventScroll: true });
+  }, [sessionId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -134,12 +153,12 @@ export function QuestionGenerator({ suggestions, total }: { suggestions: Suggest
   const discarded = session?.questions.filter((draft) => draft.status === "discarded") ?? [];
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:items-start">
       <form
         noValidate
         onSubmit={submit}
         aria-describedby={`${formId}-hint`}
-        className="flex max-w-2xl flex-col gap-5 rounded-3xl border border-border bg-surface p-6 sm:p-8"
+        className="flex flex-col gap-5 rounded-3xl border border-border bg-surface p-6 sm:p-8 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto"
       >
         <TextAreaField
           ref={promptRef}
@@ -223,63 +242,77 @@ export function QuestionGenerator({ suggestions, total }: { suggestions: Suggest
         </p>
       </form>
 
-      {progress && (
-        <section aria-label="Gerando questões" className="flex flex-col gap-4">
-          <div className="max-w-2xl">
-            <GenerationProgress steps={GENERATION_STEPS} progress={progress} />
+      <div className="flex min-w-0 flex-col gap-4">
+        {!progress && !session && (
+          <div className="hidden rounded-3xl border border-dashed border-border-strong/60 bg-surface p-8 text-center lg:block">
+            <p className="font-medium text-ink">As questões aparecem aqui</p>
+            <p className="mt-1 text-sm text-muted">
+              Descreva o que quer praticar e clique em &quot;Gerar questões&quot;. Você acompanha cada etapa ao vivo.
+            </p>
           </div>
-          <ol className="flex flex-col gap-4">
-            {Array.from({ length: Math.min(Number(count), 3) }, (_, index) => (
-              <QuestionSkeleton key={index} />
-            ))}
-          </ol>
-        </section>
-      )}
+        )}
 
-      {session && !progress && (
-        <section aria-labelledby={`${formId}-results`} className="flex flex-col gap-4">
-          <div>
-            <h2 id={`${formId}-results`} className="text-xl font-semibold tracking-tight text-ink">
-              {ready.length} {ready.length === 1 ? "questão pronta para revisar" : "questões prontas para revisar"}
-            </h2>
-            <FilterSummary session={session} />
-          </div>
-          {ready.length === 0 && (
-            <Alert tone="info">Nenhuma questão passou na conferência desta vez. Gere de novo ou mude o pedido.</Alert>
-          )}
-          <ol className="flex flex-col gap-4">
-            {ready.map((draft, index) => (
-              <QuestionCard
-                key={draft.id}
-                number={index + 1}
-                draft={draft}
-                maxRevisions={session.max_teacher_revisions}
-                save={saves[draft.id]}
-                onSave={() => save(draft)}
-                adjusting={adjusting?.questionId === draft.id ? adjusting.progress : null}
-                adjustDisabled={adjusting !== null}
-                adjustError={adjustErrors[draft.id]}
-                onAdjust={(feedback) => requestAdjustment(draft.id, feedback)}
-              />
-            ))}
-          </ol>
-          {discarded.length > 0 && (
-            <details className="rounded-2xl border border-border bg-surface px-4 py-3">
-              <summary className="cursor-pointer text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-primary">
-                {discarded.length} {discarded.length === 1 ? "questão descartada" : "questões descartadas"} na conferência
-              </summary>
-              <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
-                {discarded.map((draft) => (
-                  <li key={draft.id}>
-                    <span className="font-medium text-ink">{draft.question.title}</span>
-                    {draft.issue ? ` — ${draft.issue}` : ""}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </section>
-      )}
+        {progress && (
+          <section ref={progressRef} aria-label="Gerando questões" className="flex scroll-mt-32 flex-col gap-4">
+            <GenerationProgress steps={GENERATION_STEPS} progress={progress} />
+            <ol className="flex flex-col gap-4">
+              {Array.from({ length: Math.min(Number(count), 3) }, (_, index) => (
+                <QuestionSkeleton key={index} />
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {session && !progress && (
+          <section aria-labelledby={`${formId}-results`} className="flex scroll-mt-32 flex-col gap-4">
+            <div>
+              <h2
+                id={`${formId}-results`}
+                ref={resultsHeadingRef}
+                tabIndex={-1}
+                className="scroll-mt-32 text-xl font-semibold tracking-tight text-ink focus:outline-none"
+              >
+                {ready.length} {ready.length === 1 ? "questão pronta para revisar" : "questões prontas para revisar"}
+              </h2>
+              <FilterSummary session={session} />
+            </div>
+            {ready.length === 0 && (
+              <Alert tone="info">Nenhuma questão passou na conferência desta vez. Gere de novo ou mude o pedido.</Alert>
+            )}
+            <ol className="flex flex-col gap-4">
+              {ready.map((draft, index) => (
+                <QuestionCard
+                  key={draft.id}
+                  number={index + 1}
+                  draft={draft}
+                  maxRevisions={session.max_teacher_revisions}
+                  save={saves[draft.id]}
+                  onSave={() => save(draft)}
+                  adjusting={adjusting?.questionId === draft.id ? adjusting.progress : null}
+                  adjustDisabled={adjusting !== null}
+                  adjustError={adjustErrors[draft.id]}
+                  onAdjust={(feedback) => requestAdjustment(draft.id, feedback)}
+                />
+              ))}
+            </ol>
+            {discarded.length > 0 && (
+              <details className="rounded-2xl border border-border bg-surface px-4 py-3">
+                <summary className="cursor-pointer text-sm font-medium text-ink focus-visible:outline-2 focus-visible:outline-primary">
+                  {discarded.length} {discarded.length === 1 ? "questão descartada" : "questões descartadas"} na conferência
+                </summary>
+                <ul className="mt-2 flex flex-col gap-2 text-sm text-muted">
+                  {discarded.map((draft) => (
+                    <li key={draft.id}>
+                      <span className="font-medium text-ink">{draft.question.title}</span>
+                      {draft.issue ? ` — ${draft.issue}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
