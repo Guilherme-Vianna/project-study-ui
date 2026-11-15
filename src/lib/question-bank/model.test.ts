@@ -5,7 +5,7 @@ import {
   suggestions,
   toGeneratedExercisePayload,
   type GeneratedQuestion,
-  type GenerationResult,
+  type GenerationSession,
 } from "./model";
 
 const subjects = [
@@ -91,7 +91,7 @@ describe("referenceSummary", () => {
         { id: "1", subject: "M", topic: "T", board: "INEP", exam: "ENEM", year: 2016 },
         { id: "2", subject: "M", topic: "T", board: "INEP", exam: "ENEM", year: 2024 },
       ],
-    } as GenerationResult;
+    } as GenerationSession;
     expect(referenceSummary(result)).toBe("ENEM 2016–2024");
   });
 });

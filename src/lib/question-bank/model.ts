@@ -9,6 +9,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 };
 
 export const PROMPT_LIMIT = { min: 3, max: 2000 };
+export const FEEDBACK_LIMIT = { min: 3, max: 2000 };
 export const COUNT_OPTIONS = [1, 3, 5, 10];
 
 export type CatalogEntry = { name: string; count: number };
@@ -36,7 +37,20 @@ export type GeneratedQuestion = {
   expected_answer: string | null;
 };
 
-export type GenerationResult = {
+export type DraftStatus = "ready" | "discarded";
+
+export type GeneratedDraft = {
+  id: string;
+  status: DraftStatus;
+  verified: boolean | null;
+  auto_fixes: number;
+  teacher_revisions: number;
+  issue: string | null;
+  question: GeneratedQuestion;
+};
+
+export type GenerationSession = {
+  id: string;
   filters: {
     subject: string | null;
     topics: string[];
@@ -45,7 +59,8 @@ export type GenerationResult = {
     year_to: number | null;
   };
   references: { id: string; subject: string; topic: string; board: string | null; exam: string | null; year: number | null }[];
-  questions: GeneratedQuestion[];
+  questions: GeneratedDraft[];
+  max_teacher_revisions: number;
 };
 
 export type Suggestion = { label: string; prompt: string };
@@ -105,7 +120,7 @@ export function toGeneratedExercisePayload(
   };
 }
 
-export function referenceSummary(result: GenerationResult) {
+export function referenceSummary(result: Pick<GenerationSession, "references">) {
   const years = result.references.map((reference) => reference.year).filter((year): year is number => year !== null);
   const exams = [...new Set(result.references.map((reference) => reference.exam ?? reference.board).filter(Boolean))];
   const span = years.length ? (Math.min(...years) === Math.max(...years) ? `${years[0]}` : `${Math.min(...years)}–${Math.max(...years)}`) : "";
