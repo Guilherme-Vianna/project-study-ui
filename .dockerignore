@@ -1,0 +1,8 @@
+.git
+.next
+node_modules
+.claude
+coverage
+tsconfig.tsbuildinfo
+Dockerfile
+.dockerignore

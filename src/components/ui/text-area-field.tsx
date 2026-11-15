@@ -1,4 +1,4 @@
-import { useId, type TextareaHTMLAttributes } from "react";
+import { useId, type Ref, type TextareaHTMLAttributes } from "react";
 
 type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
@@ -7,6 +7,7 @@ type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   error?: string;
   maxLength: number;
   value: string;
+  ref?: Ref<HTMLTextAreaElement>;
 };
 
 export function TextAreaField({ label, optional = false, hint, error, maxLength, value, className = "", ...props }: TextAreaFieldProps) {
