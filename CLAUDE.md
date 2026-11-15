@@ -82,12 +82,16 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 
 ## Question generation
 
-- Teacher `/exercicios/gerar` ("Gerar com IA" button on `/exercicios`): prompt (3–2000 chars) + count, type and
-  difficulty → `POST /question-bank/generations` (the API picks filters, fetches reference exam questions and returns
-  structured questions; slow, up to ~1 min). Suggestion chips come from `GET /question-bank/catalog`.
-- Nothing is saved until "Salvar como exercício" (`saveGeneratedQuestionAction` → `POST /exercises`): teacher subjects
-  whose name matches the question subject/topic (accent-insensitive) are attached; open answers keep the solution in
-  `expected_answer`. Mapping lives in `lib/question-bank/model.ts`. 409 empty bank, 502 AI failed, 503 not configured.
+- Teacher `/exercicios/gerar` ("Gerar com IA" on `/exercicios`): prompt (3–2000) + count, type, difficulty; suggestion
+  chips from `GET /question-bank/catalog`. The browser streams through route handlers `POST /api/question-generations`
+  and `POST /api/question-generations/[id]/adjustments` (`lib/question-bank/proxy.ts` adds the bearer token and pipes
+  the API SSE). `lib/question-bank/stream.ts` parses `progress`/`result`/`error` and maps graph nodes to steps.
+- While generating: `GenerationProgress` (steps, progress bar, elapsed seconds) + `QuestionSkeleton` cards. Results show
+  ready questions (badges: conferida por outro modelo, corrigida automaticamente, ajustada por você) and a collapsed
+  list of discarded ones with the reason.
+- "Pedir ajuste" (≤ `max_teacher_revisions`) sends the teacher's feedback; only that card shows the compact progress
+  and is replaced by the new version. "Salvar como exercício" (`saveGeneratedQuestionAction` → `POST /exercises`)
+  attaches teacher subjects matching the question subject/topic; open answers keep the solution in `expected_answer`.
 
 ## Study plans
 
@@ -162,7 +166,7 @@ src/
                   profile/ (fields, roles, actions, action state), tour/ (steps, seen flag), invites/ (actions, links, validity), subjects/ (actions,
                   validation), exercises/ (model, validation, actions, upload, from-api, teacher-guard),
                   plans/ (model, validation, actions, from-api, weeks), attempts/ (model, actions),
-                  skills/ (model, actions, from-api), question-bank/ (model, actions), people, firebase/
+                  skills/ (model, actions, from-api), question-bank/ (model, actions, stream, proxy), people, firebase/
   proxy.ts
 tests/            vitest setup and stubs; test files live next to the code as *.test.ts(x)
 ```
