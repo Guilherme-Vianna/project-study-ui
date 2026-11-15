@@ -9,6 +9,7 @@ export const PROFILE_EDIT_PATH = "/perfil/editar";
 export const STUDENTS_PATH = "/alunos";
 export const SUBJECTS_PATH = "/assuntos";
 export const EXERCISES_PATH = "/exercicios";
+export const GENERATE_QUESTIONS_PATH = "/exercicios/gerar";
 export const PLANS_PATH = "/planos";
 export const REVIEWS_PATH = "/correcoes";
 export const SKILLS_PATH = "/habilidades";

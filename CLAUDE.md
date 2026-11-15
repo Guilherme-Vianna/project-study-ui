@@ -80,6 +80,15 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
   Images uploaded in the editor and then removed/discarded are deleted best-effort (`DELETE /api/images/[id]`).
   Render with `next/image` `unoptimized` (`ImageThumb`); `url` may be null when storage is not configured.
 
+## Question generation
+
+- Teacher `/exercicios/gerar` ("Gerar com IA" button on `/exercicios`): prompt (3–2000 chars) + count, type and
+  difficulty → `POST /question-bank/generations` (the API picks filters, fetches reference exam questions and returns
+  structured questions; slow, up to ~1 min). Suggestion chips come from `GET /question-bank/catalog`.
+- Nothing is saved until "Salvar como exercício" (`saveGeneratedQuestionAction` → `POST /exercises`): teacher subjects
+  whose name matches the question subject/topic (accent-insensitive) are attached; open answers keep the solution in
+  `expected_answer`. Mapping lives in `lib/question-bank/model.ts`. 409 empty bank, 502 AI failed, 503 not configured.
+
 ## Study plans
 
 - A plan is only subjects with weekly hours (+ optional weekdays). Students see every teacher exercise sharing any plan
@@ -138,7 +147,7 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 src/
   app/            page.tsx (login, "/"), api/session/route.ts, api/images/ (upload proxy + delete)
   app/(app)/      authenticated: layout (AppHeader, SessionRefresher), inicio/, cadastro/ (+ professor/, aluno/),
-                  perfil/ (+ editar/), alunos/ (+ [id]/), assuntos/, exercicios/ (+ novo/, [id]/),
+                  perfil/ (+ editar/), alunos/ (+ [id]/), assuntos/, exercicios/ (+ novo/, [id]/, gerar/),
                   planos/ (+ novo/, [id]/, [id]/editar/), correcoes/ (+ [id]/), habilidades/ (+ novo/, [id]/),
                   meu-plano/, praticar/ (+ [id]/), minhas-habilidades/, convite/[token]/
   components/ui/  button, text-field, text-area-field, alert, spinner, copy-button, modal, confirm-dialog,
@@ -146,14 +155,14 @@ src/
   components/     app/ (header, account menu, product tour, page header, loading, API error), auth/, brand/,
                   profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/,
                   subjects/, exercises/ (editor, board, subject/skill pickers, image upload/thumb),
-                  plans/ (editor, weekday picker, assign button + student picker modal, progress, actions),
+                  plans/ (editor, weekday picker, assign button + student picker modal, progress, actions), question-bank/,
                   attempts/ (parts, answer form, review form/filters), practice/, skills/
   lib/            auth/ (constants, session, current account, errors, student guard), api/ (client + fetchAll/queryString,
-                  account, profiles, enrollments, subjects, exercises, plans, attempts, skills),
+                  account, profiles, enrollments, subjects, exercises, plans, attempts, skills, question-bank),
                   profile/ (fields, roles, actions, action state), tour/ (steps, seen flag), invites/ (actions, links, validity), subjects/ (actions,
                   validation), exercises/ (model, validation, actions, upload, from-api, teacher-guard),
                   plans/ (model, validation, actions, from-api, weeks), attempts/ (model, actions),
-                  skills/ (model, actions, from-api), people, firebase/
+                  skills/ (model, actions, from-api), question-bank/ (model, actions), people, firebase/
   proxy.ts
 tests/            vitest setup and stubs; test files live next to the code as *.test.ts(x)
 ```
@@ -207,3 +216,6 @@ pnpm test
 pnpm lint
 pnpm build
 ```
+
+`Dockerfile` builds the `output: "standalone"` server (reads `.env` at build time for `NEXT_PUBLIC_*`); the
+local stack (API + UI with production settings) is `../docker-compose.yml`.

@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { PlusIcon } from "@/components/ui/icons";
 import { listMyExercises } from "@/lib/api/exercises";
 import { listMySubjects } from "@/lib/api/subjects";
-import { EXERCISES_PATH } from "@/lib/auth/constants";
+import { EXERCISES_PATH, GENERATE_QUESTIONS_PATH } from "@/lib/auth/constants";
 import { formatHours } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { formatDate } from "@/lib/invites/validity";
@@ -25,10 +25,18 @@ export default function ExercisesPage({ searchParams }: PageProps<"/exercicios">
         title="Exercícios"
         description="Questões de múltipla escolha ou de resposta aberta. Os alunos veem as que têm algum assunto do plano deles."
         actions={
-          <Link href={`${EXERCISES_PATH}/novo`} className={NEW_EXERCISE_LINK}>
-            <PlusIcon />
-            Novo exercício
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={GENERATE_QUESTIONS_PATH}
+              className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-surface px-6 font-medium text-ink hover:border-border-strong hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Gerar com IA
+            </Link>
+            <Link href={`${EXERCISES_PATH}/novo`} className={NEW_EXERCISE_LINK}>
+              <PlusIcon />
+              Novo exercício
+            </Link>
+          </div>
         }
       />
       <Suspense fallback={<PageLoading label="Carregando exercícios…" />}>
