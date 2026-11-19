@@ -8,6 +8,7 @@ import { PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/ui/ico
 import { EXERCISES_PATH } from "@/lib/auth/constants";
 import { deleteExerciseAction } from "@/lib/exercises/actions";
 import { EXERCISE_TYPE_LABELS } from "@/lib/exercises/model";
+import { ExerciseKindBadge } from "./exercise-kind-badge";
 import { filterExercises, NO_SUBJECT, type ExerciseItem, type ExerciseSort, type TypeFilter } from "./exercise-filters";
 
 const typeFilters: { value: TypeFilter; label: string }[] = [
@@ -137,20 +138,13 @@ export function ExerciseBoard({ exercises, subjects }: { exercises: ExerciseItem
             <li key={exercise.id} className="flex gap-3 rounded-3xl border border-border bg-surface p-5 transition-colors hover:border-border-strong">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      exercise.type === "multiple_choice" ? "bg-primary-soft text-primary" : "bg-accent-soft text-accent-strong"
-                    }`}
-                  >
-                    {EXERCISE_TYPE_LABELS[exercise.type]}
-                  </span>
+                  <ExerciseKindBadge types={exercise.types} questionCount={exercise.questionCount} />
                   {exercise.hoursLabel && <span className="text-xs text-muted">⏱ {exercise.hoursLabel}</span>}
                   {exercise.imageCount > 0 && (
                     <span className="text-xs text-muted">
                       {exercise.imageCount} {exercise.imageCount === 1 ? "imagem" : "imagens"}
                     </span>
                   )}
-                  {exercise.type === "multiple_choice" && <span className="text-xs text-muted">{exercise.optionCount} alternativas</span>}
                 </div>
                 <h3 className="mt-2 font-semibold text-ink">
                   <Link

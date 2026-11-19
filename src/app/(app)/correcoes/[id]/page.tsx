@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { ApiUnavailable } from "@/components/app/api-unavailable";
 import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
-import { AnsweredOptions, Chips, CorrectnessBadge, ExerciseStatement, ReviewBadge } from "@/components/attempts/attempt-parts";
+import { AttemptAnswers, Chips, CorrectnessBadge, ExerciseStatement, ReviewBadge } from "@/components/attempts/attempt-parts";
 import { ReviewForm } from "@/components/attempts/review-form";
 import { getAttempt, listAttempts } from "@/lib/api/attempts";
 import { ApiError } from "@/lib/api/client";
@@ -12,7 +12,7 @@ import { listMyStudents, personName } from "@/lib/api/enrollments";
 import { getExercise } from "@/lib/api/exercises";
 import { EXERCISES_PATH, REVIEWS_PATH, STUDENTS_PATH } from "@/lib/auth/constants";
 import { reviewsHref } from "@/lib/attempts/model";
-import { EXERCISE_TYPE_LABELS, formatHours } from "@/lib/exercises/model";
+import { formatHours } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { formatDateTime } from "@/lib/invites/validity";
 
@@ -100,21 +100,13 @@ async function ReviewDetail({ params }: Pick<PageProps<"/correcoes/[id]">, "para
               <ReviewBadge status={attempt.review_status} />
             </div>
             <p className="text-sm text-muted">
-              Enviada em {formatDateTime(attempt.submitted_at)} · {formatHours(attempt.hours)} de estudo ·{" "}
-              {EXERCISE_TYPE_LABELS[attempt.exercise_type]}
+              Enviada em {formatDateTime(attempt.submitted_at)} · {formatHours(attempt.hours)} de estudo
+              {attempt.package_id ? " · Pacote de exercícios" : ""}
             </p>
-            {attempt.exercise_type === "open_answer" ? (
-              <p className="whitespace-pre-wrap rounded-2xl bg-canvas p-4 leading-relaxed text-ink">{attempt.answer_text}</p>
-            ) : exercise ? (
-              <AnsweredOptions options={exercise.options} selected={attempt.selected_option_ids} correct={attempt.correct_option_ids} />
+            {exercise ? (
+              <AttemptAnswers questions={exercise.questions} answers={attempt.answers} showExpected />
             ) : (
-              <p className="text-sm text-muted">O exercício foi excluído, então as alternativas não podem ser mostradas.</p>
-            )}
-            {exercise?.expected_answer && (
-              <div className="rounded-2xl border border-success/40 bg-success-soft/60 p-4">
-                <p className="text-xs font-medium text-success-strong">Resposta esperada (só você vê)</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{exercise.expected_answer}</p>
-              </div>
+              <p className="text-sm text-muted">O exercício foi excluído, então as questões não podem ser mostradas.</p>
             )}
           </section>
 

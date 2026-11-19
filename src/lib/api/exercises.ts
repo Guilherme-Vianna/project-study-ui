@@ -13,17 +13,40 @@ export type ImageRead = {
   url: string | null;
 };
 
-export type Exercise = {
+export type ExerciseOption = {
   id: string;
+  position: number;
+  text: string | null;
+  is_correct: boolean;
+  image: ImageRead | null;
+};
+
+export type ExerciseQuestion = {
+  id: string;
+  position: number;
   type: ExerciseType;
-  title: string;
   statement: string | null;
   expected_answer: string | null;
+  options: ExerciseOption[];
+};
+
+export type ExerciseSummary = {
+  id: string;
+  title: string;
+  estimated_hours: number | null;
+  question_count: number;
+  subjects: { id: string; name: string }[];
+};
+
+export type Exercise = {
+  id: string;
+  title: string;
+  statement: string | null;
   estimated_hours: number | null;
   subjects: { id: string; name: string }[];
   skills: SkillSummary[];
   images: { placement: ImagePlacement; position: number; image: ImageRead }[];
-  options: { id: string; position: number; text: string | null; is_correct: boolean; image: ImageRead | null }[];
+  questions: ExerciseQuestion[];
   created_at: string;
   updated_at: string;
 };

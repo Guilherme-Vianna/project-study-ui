@@ -104,21 +104,26 @@ export function toGeneratedExercisePayload(
     .filter(Boolean)
     .join("\n\n");
   return {
-    type: question.type,
     title: clip(question.title, LIMITS.title),
-    statement: clip(question.statement, LIMITS.text) || null,
-    expected_answer: multiple ? null : clip(answer, LIMITS.text) || null,
+    statement: null,
     estimated_hours: null,
     subject_ids: matchingSubjectIds(question, subjects).slice(0, LIMITS.subjects),
     skill_ids: [...new Set(skillIds)].slice(0, LIMITS.skills),
     images: [],
-    options: multiple
-      ? question.options.slice(0, LIMITS.options.max).map((option) => ({
-          text: clip(option.text, LIMITS.text),
-          is_correct: option.is_correct,
-          image_id: null,
-        }))
-      : [],
+    questions: [
+      {
+        type: question.type,
+        statement: clip(question.statement, LIMITS.text) || null,
+        expected_answer: multiple ? null : clip(answer, LIMITS.text) || null,
+        options: multiple
+          ? question.options.slice(0, LIMITS.options.max).map((option) => ({
+              text: clip(option.text, LIMITS.text),
+              is_correct: option.is_correct,
+              image_id: null,
+            }))
+          : [],
+      },
+    ],
   };
 }
 

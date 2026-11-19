@@ -3,12 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { emptyDraft } from "@/lib/exercises/model";
 
-const mocks = vi.hoisted(() => ({
+const mocks = vi.hoisted(() => {
+  process.env.NEXT_PUBLIC_IMAGE_UPLOADS = "true";
+  return {
   saveExerciseAction: vi.fn(),
   uploadImage: vi.fn(),
   discardUploadedImage: vi.fn(),
   router: { push: vi.fn() },
-}));
+  };
+});
 
 vi.mock("@/lib/exercises/actions", () => ({ saveExerciseAction: mocks.saveExerciseAction }));
 vi.mock("@/lib/exercises/upload", async (importOriginal) => ({
@@ -38,7 +41,7 @@ describe("ExerciseEditor", () => {
   it("starts as multiple choice with four options", () => {
     renderEditor();
     expect(screen.getByRole("radio", { name: /Múltipla escolha/ })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getAllByRole("textbox", { name: /^Alternativa [A-D]$/ })).toHaveLength(4);
+    expect(screen.getAllByRole("textbox", { name: /^Questão 1, alternativa [A-D]$/ })).toHaveLength(4);
   });
 
   it("validates title, empty options and the correct answer before saving", async () => {
@@ -58,8 +61,8 @@ describe("ExerciseEditor", () => {
     await userEvent.type(screen.getByLabelText("Título"), "Seno de 30°");
     await userEvent.click(screen.getByRole("button", { name: "Remover alternativa D" }));
     await userEvent.click(screen.getByRole("button", { name: "Remover alternativa C" }));
-    await userEvent.type(screen.getByRole("textbox", { name: "Alternativa A" }), "1/2");
-    await userEvent.type(screen.getByRole("textbox", { name: "Alternativa B" }), "1");
+    await userEvent.type(screen.getByRole("textbox", { name: "Questão 1, alternativa A" }), "1/2");
+    await userEvent.type(screen.getByRole("textbox", { name: "Questão 1, alternativa B" }), "1");
     await userEvent.click(screen.getAllByRole("button", { name: "Marcar como correta" })[0]);
     await userEvent.click(screen.getByRole("button", { name: "Trigonometria" }));
     await userEvent.type(screen.getByLabelText(/Tempo estimado/), "0,5");
@@ -69,7 +72,7 @@ describe("ExerciseEditor", () => {
     const [id, draft] = mocks.saveExerciseAction.mock.calls[0];
     expect(id).toBeNull();
     expect(draft).toMatchObject({ title: "Seno de 30°", subjectIds: ["s1"], estimatedHours: "0,5" });
-    expect(draft.options.map((option: { text: string; isCorrect: boolean }) => [option.text, option.isCorrect])).toEqual([
+    expect(draft.questions[0].options.map((option: { text: string; isCorrect: boolean }) => [option.text, option.isCorrect])).toEqual([
       ["1/2", true],
       ["1", false],
     ]);
@@ -84,19 +87,41 @@ describe("ExerciseEditor", () => {
 
   it("reorders options", async () => {
     renderEditor();
-    await userEvent.type(screen.getByRole("textbox", { name: "Alternativa A" }), "primeira");
+    await userEvent.type(screen.getByRole("textbox", { name: "Questão 1, alternativa A" }), "primeira");
     await userEvent.click(screen.getByRole("button", { name: "Mover A para baixo" }));
-    expect(screen.getByRole("textbox", { name: "Alternativa B" })).toHaveValue("primeira");
+    expect(screen.getByRole("textbox", { name: "Questão 1, alternativa B" })).toHaveValue("primeira");
   });
 
   it("switches to open answer and asks for the expected answer instead of options", async () => {
     renderEditor();
     await userEvent.click(screen.getByRole("radio", { name: /Resposta aberta/ }));
-    expect(screen.queryByRole("textbox", { name: "Alternativa A" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Questão 1, alternativa A" })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/Resposta esperada/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("radio", { name: /Múltipla escolha/ }));
-    expect(screen.getAllByRole("textbox", { name: /^Alternativa/ })).toHaveLength(4);
+    expect(screen.getAllByRole("textbox", { name: /alternativa [A-Z]$/ })).toHaveLength(4);
+  });
+
+  it("adds an open question next to a multiple choice one", async () => {
+    mocks.saveExerciseAction.mockResolvedValue(undefined);
+    renderEditor();
+    await userEvent.type(screen.getByLabelText("Título"), "Nivelamento");
+    await userEvent.type(screen.getByRole("textbox", { name: "Questão 1, alternativa A" }), "1/2");
+    await userEvent.type(screen.getByRole("textbox", { name: "Questão 1, alternativa B" }), "1");
+    await userEvent.click(screen.getByRole("button", { name: "Remover alternativa D" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remover alternativa C" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Marcar como correta" })[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Questão aberta" }));
+    expect(screen.getByRole("group", { name: "Questão 2" })).toBeInTheDocument();
+    await userEvent.type(within(screen.getByRole("group", { name: "Questão 2" })).getByLabelText(/Pergunta/), "Explique");
+    await userEvent.click(screen.getByRole("button", { name: "Criar exercício" }));
+
+    await waitFor(() => expect(mocks.saveExerciseAction).toHaveBeenCalled());
+    const [, draft] = mocks.saveExerciseAction.mock.calls[0];
+    expect(draft.questions.map((question: { type: string; statement: string }) => [question.type, question.statement])).toEqual([
+      ["multiple_choice", ""],
+      ["open_answer", "Explique"],
+    ]);
   });
 
   it("uploads statement images and discards them when removed", async () => {

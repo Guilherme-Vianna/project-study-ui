@@ -13,20 +13,21 @@ import { TextField } from "@/components/ui/text-field";
 import { EXERCISES_PATH } from "@/lib/auth/constants";
 import { saveExerciseAction, type SavedExercise } from "@/lib/exercises/actions";
 import {
-  emptyOption,
+  emptyQuestion,
+  IMAGE_UPLOADS_ENABLED,
   LIMITS,
-  optionLetter,
   PLACEMENT_LABELS,
   type DraftImage,
+  type DraftQuestion,
   type ExerciseDraft,
-  type ExerciseType,
   type ImagePlacement,
 } from "@/lib/exercises/model";
 import { discardUploadedImage } from "@/lib/exercises/upload";
-import { hasErrors, validateExercise, type ExerciseErrors } from "@/lib/exercises/validation";
+import { hasErrors, validateExercise, type ExerciseErrors, type QuestionErrors } from "@/lib/exercises/validation";
 import type { SkillGroupOption } from "@/lib/skills/model";
 import { ImageThumb } from "./image-thumb";
 import { ImageUploadButton } from "./image-upload-button";
+import { QuestionEditor } from "./question-editor";
 import { SkillPicker } from "./skill-picker";
 import { SubjectPicker } from "./subject-picker";
 
@@ -37,11 +38,6 @@ type ExerciseEditorProps = {
   skillGroups?: SkillGroupOption[];
   embedded?: { onSaved: (exercise: SavedExercise) => void; onCancel: () => void; submitLabel: string };
 };
-
-const typeChoices: { value: ExerciseType; title: string; description: string }[] = [
-  { value: "multiple_choice", title: "Múltipla escolha", description: "O aluno escolhe entre alternativas." },
-  { value: "open_answer", title: "Resposta aberta", description: "O aluno responde por extenso." },
-];
 
 export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups = [], embedded }: ExerciseEditorProps) {
   const router = useRouter();
@@ -73,31 +69,44 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups
     if (field in errors) setErrors((current) => ({ ...current, [field]: undefined }));
   }
 
-  function updateOption(key: string, update: Partial<ExerciseDraft["options"][number]>) {
+  function updateQuestion(
+    key: string,
+    update: (current: DraftQuestion) => DraftQuestion,
+    clear?: keyof QuestionErrors | "all",
+  ) {
     change((current) => ({
       ...current,
-      options: current.options.map((option) => (option.key === key ? { ...option, ...update } : option)),
+      questions: current.questions.map((question) => (question.key === key ? update(question) : question)),
     }));
+    if (clear) clearQuestionError(key, clear);
+  }
+
+  function clearQuestionError(key: string, field: keyof QuestionErrors | "all", optionKey?: string) {
     setErrors((current) => {
-      const optionText = { ...current.optionText };
-      delete optionText[key];
-      return { ...current, optionText, options: "isCorrect" in update ? undefined : current.options };
+      const existing = current.questionErrors?.[key];
+      if (!existing) return current;
+      const next: QuestionErrors = field === "all" ? {} : { ...existing, [field]: undefined };
+      if (optionKey && next.optionText) {
+        next.optionText = { ...next.optionText };
+        delete next.optionText[optionKey];
+      }
+      return { ...current, questionErrors: { ...current.questionErrors, [key]: next } };
     });
   }
 
-  function moveOption(index: number, delta: number) {
+  function moveQuestion(index: number, delta: number) {
     change((current) => {
-      const options = [...current.options];
-      const [moved] = options.splice(index, 1);
-      options.splice(index + delta, 0, moved);
-      return { ...current, options };
+      const questions = [...current.questions];
+      const [moved] = questions.splice(index, 1);
+      questions.splice(index + delta, 0, moved);
+      return { ...current, questions };
     });
   }
 
-  function removeOption(key: string) {
-    const option = draft.options.find((item) => item.key === key);
-    if (option?.image) releaseImage(option.image.imageId);
-    change((current) => ({ ...current, options: current.options.filter((item) => item.key !== key) }));
+  function removeQuestion(key: string) {
+    const question = draft.questions.find((item) => item.key === key);
+    for (const option of question?.options ?? []) if (option.image) releaseImage(option.image.imageId);
+    change((current) => ({ ...current, questions: current.questions.filter((item) => item.key !== key) }));
   }
 
   function trackUpload(image: DraftImage) {
@@ -148,7 +157,6 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups
     target?.focus({ preventScroll: true });
   }
 
-  const multiple = draft.type === "multiple_choice";
   const imageSlots = LIMITS.images - draft.images.length;
 
   return (
@@ -159,31 +167,7 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups
         </div>
       )}
 
-      <Section title="Tipo de exercício">
-        <div role="radiogroup" aria-label="Tipo de exercício" className="grid gap-3 sm:grid-cols-2">
-          {typeChoices.map((choice) => {
-            const active = draft.type === choice.value;
-            return (
-              <button
-                key={choice.value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                disabled={pending}
-                onClick={() => setField("type", choice.value)}
-                className={`flex cursor-pointer flex-col items-start rounded-2xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  active ? "border-primary bg-primary-soft" : "border-border bg-surface hover:border-border-strong"
-                }`}
-              >
-                <span className={`font-semibold ${active ? "text-primary" : "text-ink"}`}>{choice.title}</span>
-                <span className="mt-1 text-sm text-muted">{choice.description}</span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-
-      <Section title="Conteúdo">
+      <Section title="Exercício">
         <TextField
           label="Título"
           name="title"
@@ -196,24 +180,26 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups
           onChange={(event) => setField("title", event.target.value)}
         />
         <TextAreaField
-          label="Enunciado"
+          label="Enunciado geral"
           name="statement"
           optional
           value={draft.statement}
           maxLength={LIMITS.text}
-          placeholder="Escreva a pergunta completa, com os dados que o aluno precisa."
+          placeholder="Texto, contexto ou instruções que valem para todas as questões."
+          hint="Use para um texto de leitura ou instruções comuns. Cada questão abaixo tem a sua própria pergunta."
           error={errors.statement}
           disabled={pending}
           rows={5}
           onChange={(event) => setField("statement", event.target.value)}
         />
 
+        {(IMAGE_UPLOADS_ENABLED || draft.images.length > 0) && (
         <div className="flex flex-col gap-3">
           <div>
             <p className="text-sm font-medium text-ink">
               Imagens <span className="font-normal text-muted">(opcional)</span>
             </p>
-            <p className="text-sm text-muted">Figuras, gráficos ou fotos. PNG, JPEG, GIF ou WebP de até 5 MB.</p>
+            {IMAGE_UPLOADS_ENABLED && <p className="text-sm text-muted">Figuras, gráficos ou fotos. PNG, JPEG, GIF ou WebP de até 5 MB.</p>}
           </div>
           {draft.images.length > 0 && (
             <ul className="flex flex-col gap-2">
@@ -261,6 +247,7 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups
               ))}
             </ul>
           )}
+          {IMAGE_UPLOADS_ENABLED && (
           <div>
             <ImageUploadButton
               label="Adicionar imagens"
@@ -273,152 +260,62 @@ export function ExerciseEditor({ exerciseId, initialDraft, subjects, skillGroups
               onError={setUploadError}
             />
           </div>
+          )}
           {(uploadError || errors.images) && <Alert tone="error">{uploadError ?? errors.images}</Alert>}
         </div>
+        )}
       </Section>
 
-      {multiple ? (
-        <Section
-          title="Alternativas"
-          description="Marque uma ou mais alternativas corretas. O aluno só vê a resposta certa depois de responder."
-        >
-          <ol className="flex flex-col gap-3">
-            {draft.options.map((option, index) => {
-              const letter = optionLetter(index);
-              const error = errors.optionText?.[option.key];
-              return (
-                <li
-                  key={option.key}
-                  className={`rounded-2xl border p-3 transition-colors ${
-                    option.isCorrect ? "border-success bg-success-soft/50" : "border-border"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden="true"
-                      className={`mt-1 flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                        option.isCorrect ? "bg-success text-white" : "bg-canvas text-ink"
-                      }`}
-                    >
-                      {letter}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <textarea
-                        aria-label={`Alternativa ${letter}`}
-                        aria-invalid={error ? true : undefined}
-                        value={option.text}
-                        rows={2}
-                        maxLength={LIMITS.text}
-                        disabled={pending}
-                        placeholder={`Texto da alternativa ${letter}`}
-                        onChange={(event) => updateOption(option.key, { text: event.target.value })}
-                        className={`w-full resize-y rounded-xl border bg-surface px-3 py-2 text-base text-ink placeholder:text-muted focus:outline-2 ${
-                          error ? "border-danger focus:outline-danger" : "border-border-strong focus:border-primary focus:outline-primary"
-                        }`}
-                      />
-                      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          aria-pressed={option.isCorrect}
-                          disabled={pending}
-                          onClick={() => updateOption(option.key, { isCorrect: !option.isCorrect })}
-                          className={`inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                            option.isCorrect
-                              ? "border-success bg-success text-white"
-                              : "border-border bg-surface text-ink hover:border-success hover:text-success-strong"
-                          }`}
-                        >
-                          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                            <path d="M5 12.5l4.5 4.5L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          {option.isCorrect ? "Correta" : "Marcar como correta"}
-                        </button>
-                        {option.image ? (
-                          <span className="inline-flex items-center gap-2">
-                            <ImageThumb url={option.image.url} alt={`Imagem da alternativa ${letter}`} className="size-12" />
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() => {
-                                if (option.image) releaseImage(option.image.imageId);
-                                updateOption(option.key, { image: null });
-                              }}
-                              className="cursor-pointer rounded-sm text-xs font-medium text-danger hover:underline focus-visible:outline-2 focus-visible:outline-primary"
-                            >
-                              Remover imagem
-                            </button>
-                          </span>
-                        ) : (
-                          <ImageUploadButton
-                            compact
-                            label="Imagem"
-                            disabled={pending}
-                            onUploaded={(image) => updateOption(option.key, { image: trackUpload(image) })}
-                            onError={setUploadError}
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-col">
-                      <OptionControl label={`Mover ${letter} para cima`} disabled={pending || index === 0} onClick={() => moveOption(index, -1)}>
-                        <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-                      </OptionControl>
-                      <OptionControl
-                        label={`Mover ${letter} para baixo`}
-                        disabled={pending || index === draft.options.length - 1}
-                        onClick={() => moveOption(index, 1)}
-                      >
-                        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                      </OptionControl>
-                      <OptionControl
-                        label={`Remover alternativa ${letter}`}
-                        danger
-                        disabled={pending || draft.options.length <= LIMITS.options.min}
-                        onClick={() => removeOption(option.key)}
-                      >
-                        <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-                      </OptionControl>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-          {errors.options && (
-            <p data-error="true" tabIndex={-1} className="text-sm text-danger outline-none">
-              {errors.options}
-            </p>
-          )}
-          <div>
-            <Button
-              variant="secondary"
-              icon={<PlusIcon />}
-              disabled={pending || draft.options.length >= LIMITS.options.max}
-              onClick={() => change((current) => ({ ...current, options: [...current.options, emptyOption()] }))}
-            >
-              Adicionar alternativa
-            </Button>
-            {draft.options.length >= LIMITS.options.max && (
-              <p className="mt-2 text-sm text-muted">Máximo de {LIMITS.options.max} alternativas.</p>
-            )}
-          </div>
-        </Section>
-      ) : (
-        <Section title="Resposta esperada" description="Só você vê. Ajuda a corrigir as respostas dos alunos.">
-          <TextAreaField
-            label="Resposta esperada"
-            name="expectedAnswer"
-            optional
-            value={draft.expectedAnswer}
-            maxLength={LIMITS.text}
-            placeholder="Ex.: sen 30° = 1/2"
-            error={errors.expectedAnswer}
-            disabled={pending}
-            onChange={(event) => setField("expectedAnswer", event.target.value)}
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-ink">Questões</h2>
+          <p className="text-sm text-muted">
+            Um exercício pode ter várias questões, de múltipla escolha ou abertas. O aluno responde todas de uma vez.
+          </p>
+        </div>
+        {draft.questions.map((question, index) => (
+          <QuestionEditor
+            key={question.key}
+            question={question}
+            number={index + 1}
+            total={draft.questions.length}
+            errors={errors.questionErrors?.[question.key]}
+            pending={pending}
+            onChange={(update, clear) => updateQuestion(question.key, update, clear)}
+            onClearOptionError={(optionKey) => clearQuestionError(question.key, "optionText", optionKey)}
+            onMove={(delta) => moveQuestion(index, delta)}
+            onRemove={() => removeQuestion(question.key)}
+            onUploaded={trackUpload}
+            onReleaseImage={releaseImage}
+            onUploadError={setUploadError}
           />
-        </Section>
-      )}
+        ))}
+        {errors.questions && (
+          <p data-error="true" tabIndex={-1} className="text-sm text-danger outline-none">
+            {errors.questions}
+          </p>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            block={false}
+            icon={<PlusIcon />}
+            disabled={pending || draft.questions.length >= LIMITS.questions}
+            onClick={() => change((current) => ({ ...current, questions: [...current.questions, emptyQuestion("multiple_choice")] }))}
+          >
+            Questão de múltipla escolha
+          </Button>
+          <Button
+            variant="secondary"
+            block={false}
+            icon={<PlusIcon />}
+            disabled={pending || draft.questions.length >= LIMITS.questions}
+            onClick={() => change((current) => ({ ...current, questions: [...current.questions, emptyQuestion("open_answer")] }))}
+          >
+            Questão aberta
+          </Button>
+        </div>
+      </div>
 
       <Section title="Organização">
         <div className="flex flex-col gap-2">
@@ -515,36 +412,5 @@ function Section({ title, description, children }: { title: string; description?
       </div>
       {children}
     </fieldset>
-  );
-}
-
-function OptionControl({
-  label,
-  disabled,
-  danger = false,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled: boolean;
-  danger?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-      className={`inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-30 ${
-        danger ? "hover:bg-danger-soft hover:text-danger" : "hover:bg-canvas hover:text-ink"
-      }`}
-    >
-      <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.25" aria-hidden="true">
-        {children}
-      </svg>
-    </button>
   );
 }

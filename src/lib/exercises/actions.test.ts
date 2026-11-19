@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
-import { emptyDraft, type ExerciseDraft } from "./model";
+import { emptyDraft, emptyQuestion, type ExerciseDraft } from "./model";
 
 const { api, refresh, getSessionUser, RedirectSignal } = vi.hoisted(() => ({
   api: { createExercise: vi.fn(), replaceExercise: vi.fn(), deleteExercise: vi.fn() },
@@ -26,7 +26,7 @@ vi.mock("@/lib/auth/session", () => ({ getSessionUser, getSessionToken: vi.fn() 
 const { deleteExerciseAction, saveExerciseAction } = await import("./actions");
 
 function openAnswer(): ExerciseDraft {
-  return { ...emptyDraft(), type: "open_answer", title: "Explique a Revolução Francesa", options: [] };
+  return { ...emptyDraft(), title: "Explique a Revolução Francesa", questions: [emptyQuestion("open_answer")] };
 }
 
 async function save(id: string | null, draft: ExerciseDraft) {
@@ -47,7 +47,7 @@ describe("exercise actions", () => {
   it("creates an exercise and returns to the list", async () => {
     api.createExercise.mockResolvedValue({ id: "e9" });
     const outcome = await save(null, openAnswer());
-    expect(api.createExercise).toHaveBeenCalledWith(expect.objectContaining({ type: "open_answer", options: [] }));
+    expect(api.createExercise).toHaveBeenCalledWith(expect.objectContaining({ questions: [{ type: "open_answer", statement: null, expected_answer: null, options: [] }] }));
     expect(outcome.redirect).toBe("/exercicios?salvo=criado");
   });
 
@@ -59,9 +59,18 @@ describe("exercise actions", () => {
   });
 
   it("returns the created exercise when asked to stay on the page", async () => {
-    api.createExercise.mockResolvedValue({ id: "e9", title: "T", type: "open_answer", estimated_hours: 1, subjects: [] });
+    api.createExercise.mockResolvedValue({
+      id: "e9",
+      title: "T",
+      estimated_hours: 1,
+      subjects: [],
+      questions: [{ type: "open_answer" }, { type: "multiple_choice" }],
+    });
     const result = await saveExerciseAction(null, openAnswer(), { stay: true });
-    expect(result).toEqual({ ok: true, exercise: { id: "e9", title: "T", type: "open_answer", estimatedHours: 1, subjects: [] } });
+    expect(result).toEqual({
+      ok: true,
+      exercise: { id: "e9", title: "T", types: ["multiple_choice", "open_answer"], questionCount: 2, estimatedHours: 1, subjects: [] },
+    });
     expect(refresh).toHaveBeenCalled();
   });
 

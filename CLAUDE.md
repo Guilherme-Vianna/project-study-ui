@@ -71,6 +71,10 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 - Teacher `/exercicios` (list: search title/statement, type chips, subject select incl. "Sem assunto", recent/A–Z),
   `/exercicios/novo` and `/exercicios/[id]` (full-page `ExerciseEditor`, sticky save bar, discard confirmation and
   `beforeunload` guard when dirty). Draft model, payload mapping and validation live in `lib/exercises/`.
+- An exercise has a title, an optional shared statement ("Enunciado geral"), images, subjects, skills, estimate and
+  1–50 ordered questions (`QuestionEditor` per question: own type, statement, options or expected answer; move/remove,
+  "Questão de múltipla escolha" / "Questão aberta" add buttons). Lists show `ExerciseKindBadge` (type, or "Misto", +
+  question count); the type filter matches exercises having a question of that type (`questionTypes`).
 - API rules mirrored: title ≤ 200, texts ≤ 10000, hours 0 < h ≤ 168 (typed as "0,5"), ≤ 20 subjects, ≤ 20 skills
   (`skill_ids`, `SkillPicker` grouped by skill group), ≤ 20 images; multiple choice = 2–10 options, each with text or
   image, ≥ 1 correct, no expected answer; open answer = no options. Saving uses `PUT` (full replace). Delete 409 =
@@ -79,6 +83,8 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
   token) → API `POST /images`; referenced by id with placement `statement` | `attachment` or on an option.
   Images uploaded in the editor and then removed/discarded are deleted best-effort (`DELETE /api/images/[id]`).
   Render with `next/image` `unoptimized` (`ImageThumb`); `url` may be null when storage is not configured.
+- Uploads are off unless `NEXT_PUBLIC_IMAGE_UPLOADS=true` (`IMAGE_UPLOADS_ENABLED`): the editors hide every upload
+  control (existing images can still be removed) and `POST /api/images` answers 503.
 
 ## Question generation
 
@@ -91,7 +97,8 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
   list of discarded ones with the reason.
 - "Pedir ajuste" (≤ `max_teacher_revisions`) sends the teacher's feedback; only that card shows the compact progress
   and is replaced by the new version. "Salvar como exercício" (`saveGeneratedQuestionAction` → `POST /exercises`)
-  attaches teacher subjects matching the question subject/topic; open answers keep the solution in `expected_answer`.
+  creates a one-question exercise with teacher subjects matching the question subject/topic; open answers keep the
+  solution in `expected_answer`.
 - Skills: the API suggests `skill_ids` from the teacher's skills; each card shows `SkillPicker` with them pre-checked
   (the page loads `listSkillGroups`) and saves the teacher's final choice. Cards remount after an adjustment.
 - Layout: two columns on `lg` (sticky form, progress/results on the right); on small screens the page scrolls to the
@@ -114,12 +121,25 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 ## Attempts and reviews
 
 - Student `/meu-plano` (plan + progress, 404 = no plan), `/praticar` (plan exercises: search, subject, type, to-do/done)
-  and `/praticar/[id]` (statement, skills, `AttemptForm`, own history with review badge and teacher feedback).
-- Open answer: unlimited attempts. Multiple choice: once per assignment (`locked`, 409); afterwards show `is_correct`
-  and `correct_option_ids` (`AnsweredOptions`). `spent_hours` is prefilled with the estimate, required without one.
+  and `/praticar/[id]` (`ExercisePractice`: statement, skills, `AttemptForm`, own history with review badge and feedback).
+- `AttemptForm` answers every question at once (`answers[{question_id, …}]`). Open-only exercises: unlimited attempts.
+  Any multiple choice question: once (`locked`, 409); afterwards `AttemptAnswers` shows each answer with correct options.
+  `spent_hours` is prefilled with the estimate, required without one.
 - Teacher `/correcoes`: inbox filtered by URL (`status=pendentes|aprovadas|rejeitadas|todas`, `aluno`, `exercicio`,
-  `pagina`; build links with `reviewsHref`). `/correcoes/[id]`: answer, expected answer, `ReviewForm` (feedback ≤ 20000,
+  `pacote`, `pagina`; build links with `reviewsHref`). `/correcoes/[id]`: `AttemptAnswers` per question with expected
+  answers, `ReviewForm` (feedback ≤ 20000,
   Aprovar / Rejeitar / back to pending, `PUT /attempts/{id}/review`), link to the next pending one.
+
+## Exercise packages
+
+- A package groups ordered exercises (e.g. "Pacote de Nivelamento"); students never see it until the teacher releases
+  it to them. Teacher `/pacotes` (cards: exercise count, release status), `/pacotes/novo` and `/pacotes/[id]/editar`
+  (`PackageEditor`: name ≤ 200, description ≤ 5000, 1–100 exercises picked by search and reordered), `/pacotes/[id]`
+  (exercises, link to its answers in `/correcoes?pacote=`, `PackageReleasePanel`: "Liberar para alunos" modal with
+  searchable multi-select of enrolled students, "Bloquear" per student via `ConfirmDialog`; delete 409 once answered).
+- Student `/meus-pacotes` (released packages with progress), `/meus-pacotes/[id]` (`PracticeList` with `basePath`) and
+  `/meus-pacotes/[id]/[exerciseId]` (`ExercisePractice` with `packageId`; attempts go to the package endpoints).
+- Model/validation/payload in `lib/packages/` (model, actions, from-api); API in `lib/api/packages.ts`.
 
 ## Skills
 
@@ -131,8 +151,8 @@ Web UI for `project-study-api` (FastAPI, `../project-study-api`): teachers creat
 
 ## App shell
 
-- Nav: teacher Início, Alunos, Planos, Correções, Exercícios, Habilidades, Assuntos; student Início, Meu plano,
-  Exercícios (`/praticar`), Habilidades (`/minhas-habilidades`). Role pages use `requireTeacherAccount`/`requireStudentAccount`.
+- Nav: teacher Início, Alunos, Planos, Correções, Exercícios, Pacotes, Habilidades, Assuntos; student Início, Meu plano,
+  Exercícios (`/praticar`), Pacotes (`/meus-pacotes`), Habilidades (`/minhas-habilidades`). Role pages use `requireTeacherAccount`/`requireStudentAccount`.
 - Authenticated pages: full-width sticky header (logo + role `MainNav` left, `AccountMenu` right; below `md` the nav
   drops to a scrollable second row: avatar initials, name, role;
   menu with "Meu perfil" and "Sair"), content in `max-w-7xl`, left-aligned. Never center the whole app in a narrow column.
@@ -156,20 +176,22 @@ src/
   app/            page.tsx (login, "/"), api/session/route.ts, api/images/ (upload proxy + delete)
   app/(app)/      authenticated: layout (AppHeader, SessionRefresher), inicio/, cadastro/ (+ professor/, aluno/),
                   perfil/ (+ editar/), alunos/ (+ [id]/), assuntos/, exercicios/ (+ novo/, [id]/, gerar/),
-                  planos/ (+ novo/, [id]/, [id]/editar/), correcoes/ (+ [id]/), habilidades/ (+ novo/, [id]/),
-                  meu-plano/, praticar/ (+ [id]/), minhas-habilidades/, convite/[token]/
+                  planos/ (+ novo/, [id]/, [id]/editar/), pacotes/ (+ novo/, [id]/, [id]/editar/), correcoes/ (+ [id]/),
+                  habilidades/ (+ novo/, [id]/), meu-plano/, praticar/ (+ [id]/), meus-pacotes/ (+ [id]/, [id]/[exerciseId]/),
+                  minhas-habilidades/, convite/[token]/
   components/ui/  button, text-field, text-area-field, alert, spinner, copy-button, modal, confirm-dialog,
                   icons (reuse before creating new ones)
   components/     app/ (header, account menu, product tour, page header, loading, API error), auth/, brand/,
                   profile/ (form, role signup, summary, completion card, CEP lookup), invites/, students/,
-                  subjects/, exercises/ (editor, board, subject/skill pickers, image upload/thumb),
+                  subjects/, exercises/ (editor, question editor, kind badge, board, subject/skill pickers, image upload/thumb),
+                  packages/ (editor, release panel, delete button, not found),
                   plans/ (editor, weekday picker, assign button + student picker modal, progress, actions), question-bank/,
-                  attempts/ (parts, answer form, review form/filters), practice/, skills/
+                  attempts/ (parts, answer form, review form/filters), practice/ (list, exercise practice), skills/
   lib/            auth/ (constants, session, current account, errors, student guard), api/ (client + fetchAll/queryString,
-                  account, profiles, enrollments, subjects, exercises, plans, attempts, skills, question-bank),
+                  account, profiles, enrollments, subjects, exercises, plans, attempts, packages, skills, question-bank),
                   profile/ (fields, roles, actions, action state), tour/ (steps, seen flag), invites/ (actions, links, validity), subjects/ (actions,
                   validation), exercises/ (model, validation, actions, upload, from-api, teacher-guard),
-                  plans/ (model, validation, actions, from-api, weeks), attempts/ (model, actions),
+                  plans/ (model, validation, actions, from-api, weeks), packages/ (model, actions, from-api), attempts/ (model, actions),
                   skills/ (model, actions, from-api), question-bank/ (model, actions, stream, proxy), people, firebase/
   proxy.ts
 tests/            vitest setup and stubs; test files live next to the code as *.test.ts(x)

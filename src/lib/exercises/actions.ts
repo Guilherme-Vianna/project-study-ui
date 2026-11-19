@@ -6,13 +6,14 @@ import { ApiError } from "@/lib/api/client";
 import { createExercise, deleteExercise, replaceExercise } from "@/lib/api/exercises";
 import { EXERCISES_PATH, LOGIN_PATH } from "@/lib/auth/constants";
 import { getSessionUser } from "@/lib/auth/session";
-import { toExercisePayload, type ExerciseDraft, type ExerciseType } from "./model";
+import { questionTypes, toExercisePayload, type ExerciseDraft, type ExerciseType } from "./model";
 import { hasErrors, validateExercise, type ExerciseErrors } from "./validation";
 
 export type SavedExercise = {
   id: string;
   title: string;
-  type: ExerciseType;
+  types: ExerciseType[];
+  questionCount: number;
   estimatedHours: number | null;
   subjects: { id: string; name: string }[];
 };
@@ -72,7 +73,8 @@ export async function saveExerciseAction(
       exercise: {
         id: saved.id,
         title: saved.title,
-        type: saved.type,
+        types: questionTypes(saved.questions),
+        questionCount: saved.questions.length,
         estimatedHours: saved.estimated_hours,
         subjects: saved.subjects,
       },

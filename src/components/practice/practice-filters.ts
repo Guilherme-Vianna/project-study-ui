@@ -4,7 +4,8 @@ import type { ExerciseType } from "@/lib/exercises/model";
 export type PracticeItem = {
   id: string;
   title: string;
-  type: ExerciseType;
+  types: ExerciseType[];
+  questionCount: number;
   subjects: { id: string; name: string }[];
   skills: { id: string; name: string }[];
   hoursLabel: string | null;
@@ -23,7 +24,7 @@ export function filterPractice(
   const term = normalize(query);
   return items
     .filter((item) => {
-      if (type !== "all" && item.type !== type) return false;
+      if (type !== "all" && !item.types.includes(type)) return false;
       if (subjectId && !item.subjects.some((subject) => subject.id === subjectId)) return false;
       if (status === "todo" && item.attemptsCount > 0) return false;
       if (status === "done" && item.attemptsCount === 0) return false;

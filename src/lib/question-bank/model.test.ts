@@ -41,17 +41,22 @@ describe("matchingSubjectIds", () => {
 describe("toGeneratedExercisePayload", () => {
   it("maps a multiple choice question to an exercise", () => {
     expect(toGeneratedExercisePayload(question(), subjects)).toEqual({
-      type: "multiple_choice",
       title: "Caixa d'água",
-      statement: "Qual o volume?",
-      expected_answer: null,
+      statement: null,
       estimated_hours: null,
       subject_ids: ["s1", "s2"],
       skill_ids: [],
       images: [],
-      options: [
-        { text: "12", is_correct: false, image_id: null },
-        { text: "24", is_correct: true, image_id: null },
+      questions: [
+        {
+          type: "multiple_choice",
+          statement: "Qual o volume?",
+          expected_answer: null,
+          options: [
+            { text: "12", is_correct: false, image_id: null },
+            { text: "24", is_correct: true, image_id: null },
+          ],
+        },
       ],
     });
   });
@@ -61,8 +66,8 @@ describe("toGeneratedExercisePayload", () => {
       question({ type: "open_answer", options: [], expected_answer: "24 m³" }),
       [],
     );
-    expect(payload.options).toEqual([]);
-    expect(payload.expected_answer).toBe("24 m³\n\nResolução: V = 2·3·4 = 24");
+    expect(payload.questions[0].options).toEqual([]);
+    expect(payload.questions[0].expected_answer).toBe("24 m³\n\nResolução: V = 2·3·4 = 24");
   });
 
   it("sends the chosen skills once each", () => {

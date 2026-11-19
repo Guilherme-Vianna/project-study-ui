@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useDeferredValue, useId, useState } from "react";
+import { ExerciseKindBadge } from "@/components/exercises/exercise-kind-badge";
 import { SearchIcon } from "@/components/ui/icons";
 import { PRACTICE_PATH } from "@/lib/auth/constants";
 import { EXERCISE_TYPE_LABELS } from "@/lib/exercises/model";
@@ -24,7 +25,17 @@ const chip = (active: boolean) =>
     active ? "border-primary bg-primary-soft font-medium text-primary" : "border-border bg-surface text-ink hover:border-border-strong"
   }`;
 
-export function PracticeList({ items, subjects }: { items: PracticeItem[]; subjects: { id: string; name: string }[] }) {
+export function PracticeList({
+  items,
+  subjects,
+  basePath = PRACTICE_PATH,
+  emptyMessage = "Seu professor ainda não criou exercícios com os assuntos do seu plano. Eles aparecem aqui assim que forem criados.",
+}: {
+  items: PracticeItem[];
+  subjects: { id: string; name: string }[];
+  basePath?: string;
+  emptyMessage?: string;
+}) {
   const searchId = useId();
   const [query, setQuery] = useState("");
   const [type, setType] = useState<PracticeType>("all");
@@ -38,7 +49,7 @@ export function PracticeList({ items, subjects }: { items: PracticeItem[]; subje
     return (
       <div className="rounded-3xl border border-dashed border-border-strong/60 bg-surface p-8 sm:p-10">
         <h2 className="text-xl font-semibold text-ink">Ainda não há exercícios</h2>
-        <p className="mt-2 max-w-xl text-muted">Seu professor ainda não criou exercícios com os assuntos do seu plano. Eles aparecem aqui assim que forem criados.</p>
+        <p className="mt-2 max-w-xl text-muted">{emptyMessage}</p>
       </div>
     );
   }
@@ -129,17 +140,11 @@ export function PracticeList({ items, subjects }: { items: PracticeItem[]; subje
           {visible.map((item) => (
             <li key={item.id}>
               <Link
-                href={`${PRACTICE_PATH}/${item.id}`}
+                href={`${basePath}/${item.id}`}
                 className="flex h-full flex-col gap-3 rounded-3xl border border-border bg-surface p-5 transition hover:border-primary hover:shadow-lg hover:shadow-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      item.type === "multiple_choice" ? "bg-primary-soft text-primary" : "bg-accent-soft text-accent-strong"
-                    }`}
-                  >
-                    {EXERCISE_TYPE_LABELS[item.type]}
-                  </span>
+                  <ExerciseKindBadge types={item.types} questionCount={item.questionCount} />
                   {item.hoursLabel && <span className="text-xs text-muted">⏱ {item.hoursLabel}</span>}
                   <span className="ml-auto text-xs font-medium">
                     {item.locked ? (

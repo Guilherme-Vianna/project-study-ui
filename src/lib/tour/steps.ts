@@ -1,7 +1,9 @@
 import {
   EXERCISES_PATH,
   MY_PLAN_PATH,
+  MY_PACKAGES_PATH,
   MY_SKILLS_PATH,
+  PACKAGES_PATH,
   PLANS_PATH,
   PRACTICE_PATH,
   REVIEWS_PATH,
@@ -53,7 +55,12 @@ export const TOUR_STEPS: Record<Role, TourStep[]> = {
     {
       target: navTourTarget(EXERCISES_PATH),
       title: "Exercícios",
-      body: "Crie questões de múltipla escolha ou de resposta aberta, com imagens, assuntos e habilidades.",
+      body: "Crie exercícios com uma ou várias questões, de múltipla escolha ou de resposta aberta, com imagens, assuntos e habilidades.",
+    },
+    {
+      target: navTourTarget(PACKAGES_PATH),
+      title: "Pacotes",
+      body: "Agrupe exercícios em pacotes, como “Nivelamento”. O aluno só vê um pacote depois que você liberar para ele.",
     },
     {
       target: navTourTarget(SKILLS_PATH),
@@ -85,6 +92,11 @@ export const TOUR_STEPS: Record<Role, TourStep[]> = {
       target: navTourTarget(PRACTICE_PATH),
       title: "Exercícios",
       body: "Pratique os exercícios do seu plano, veja o que falta fazer e leia o retorno do professor nas suas respostas.",
+    },
+    {
+      target: navTourTarget(MY_PACKAGES_PATH),
+      title: "Pacotes",
+      body: "Pacotes de exercícios que seu professor liberou para você, como um nivelamento. Abra um pacote para ver os exercícios.",
     },
     {
       target: navTourTarget(MY_SKILLS_PATH),

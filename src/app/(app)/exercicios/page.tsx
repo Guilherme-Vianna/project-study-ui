@@ -10,7 +10,7 @@ import { PlusIcon } from "@/components/ui/icons";
 import { listMyExercises } from "@/lib/api/exercises";
 import { listMySubjects } from "@/lib/api/subjects";
 import { EXERCISES_PATH, GENERATE_QUESTIONS_PATH } from "@/lib/auth/constants";
-import { formatHours } from "@/lib/exercises/model";
+import { formatHours, questionTypes } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { formatDate } from "@/lib/invites/validity";
 
@@ -68,13 +68,15 @@ async function ExercisesContent({ searchParams }: Pick<PageProps<"/exercicios">,
         exercises={exercises.map((exercise) => ({
           id: exercise.id,
           title: exercise.title,
-          type: exercise.type,
-          statementPreview: exercise.statement ? exercise.statement.slice(0, 300) : null,
+          types: questionTypes(exercise.questions),
+          questionCount: exercise.questions.length,
+          statementPreview: (exercise.statement ?? exercise.questions[0]?.statement)?.slice(0, 300) ?? null,
           subjects: exercise.subjects,
           skills: exercise.skills,
           hoursLabel: exercise.estimated_hours ? formatHours(exercise.estimated_hours) : null,
-          imageCount: exercise.images.length + exercise.options.filter((option) => option.image).length,
-          optionCount: exercise.options.length,
+          imageCount:
+            exercise.images.length +
+            exercise.questions.reduce((total, question) => total + question.options.filter((option) => option.image).length, 0),
           updatedAt: exercise.updated_at,
           updatedLabel: formatDate(exercise.updated_at),
         }))}

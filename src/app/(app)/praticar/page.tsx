@@ -10,7 +10,7 @@ import { ApiError } from "@/lib/api/client";
 import { getMyStudyPlan } from "@/lib/api/plans";
 import { MY_PLAN_PATH, PRACTICE_PATH } from "@/lib/auth/constants";
 import { requireStudentAccount } from "@/lib/auth/student-guard";
-import { formatHours } from "@/lib/exercises/model";
+import { formatHours, questionTypes } from "@/lib/exercises/model";
 import { formatDate } from "@/lib/invites/validity";
 
 export const metadata: Metadata = {
@@ -51,7 +51,8 @@ async function PracticeContent() {
       items={entries.map(({ exercise, attempts_count, last_attempt_at, locked }) => ({
         id: exercise.id,
         title: exercise.title,
-        type: exercise.type,
+        types: questionTypes(exercise.questions),
+        questionCount: exercise.questions.length,
         subjects: exercise.subjects,
         skills: exercise.skills,
         hoursLabel: exercise.estimated_hours ? formatHours(exercise.estimated_hours) : null,

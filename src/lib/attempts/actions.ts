@@ -3,10 +3,10 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { reviewAttempt, submitAttempt } from "@/lib/api/attempts";
+import { submitPackageAttempt } from "@/lib/api/packages";
 import { ApiError } from "@/lib/api/client";
 import { LOGIN_PATH } from "@/lib/auth/constants";
 import { getSessionUser } from "@/lib/auth/session";
-import type { ExerciseType } from "@/lib/exercises/model";
 import {
   FEEDBACK_LIMIT,
   hasAttemptErrors,
@@ -14,6 +14,8 @@ import {
   validateAttempt,
   type AttemptDraft,
   type AttemptErrors,
+  type AttemptQuestion,
+  type AttemptTarget,
   type ReviewStatus,
 } from "./model";
 
@@ -25,30 +27,33 @@ async function requireSession() {
 }
 
 export async function submitAttemptAction(
+  target: AttemptTarget,
   exerciseId: string,
-  exercise: { type: ExerciseType; estimatedHours: number | null },
+  exercise: { questions: AttemptQuestion[]; estimatedHours: number | null },
   draft: AttemptDraft,
 ): Promise<SubmitAttemptResult> {
   await requireSession();
   const errors = validateAttempt(draft, exercise);
-  if (hasAttemptErrors(errors)) return { ok: false, errors, formError: "Revise os campos destacados." };
+  if (hasAttemptErrors(errors)) return { ok: false, errors, formError: "Revise as questões destacadas." };
+  const payload = toAttemptPayload(draft, exercise.questions);
   try {
-    await submitAttempt(exerciseId, toAttemptPayload(draft, exercise.type));
+    if (target.packageId) await submitPackageAttempt(target.packageId, exerciseId, payload);
+    else await submitAttempt(exerciseId, payload);
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 401) redirect(LOGIN_PATH);
       const detail = typeof error.detail === "string" ? error.detail : "";
       if (error.status === 409) {
-        return { ok: false, errors: {}, formError: "Você já respondeu este exercício de múltipla escolha neste plano. Veja o resultado abaixo." };
+        return { ok: false, errors: {}, formError: "Você já respondeu este exercício. Veja o resultado abaixo." };
       }
       if (error.status === 404) {
-        return { ok: false, errors: {}, formError: "Este exercício não está mais no seu plano. Volte para a lista de exercícios." };
+        return { ok: false, errors: {}, formError: target.packageId ? "Este exercício não está mais liberado para você. Volte para os pacotes." : "Este exercício não está mais no seu plano. Volte para a lista de exercícios." };
       }
       if (error.status === 422 && detail.startsWith("spent_hours")) {
         return { ok: false, errors: { hours: "Informe quanto tempo você estudou." }, formError: null };
       }
-      if (error.status === 422 && detail.startsWith("Unknown options")) {
-        return { ok: false, errors: {}, formError: "As alternativas mudaram. Atualize a página e responda de novo." };
+      if (error.status === 422 && (detail.startsWith("Unknown questions") || detail.startsWith("Selected options") || detail.startsWith("Every question"))) {
+        return { ok: false, errors: {}, formError: "O professor alterou este exercício. Atualize a página e responda de novo." };
       }
       if (error.status === 422) return { ok: false, errors: {}, formError: "Sua resposta não foi aceita. Revise e tente de novo." };
     }

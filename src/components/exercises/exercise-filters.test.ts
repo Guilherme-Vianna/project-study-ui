@@ -4,13 +4,13 @@ import { filterExercises, NO_SUBJECT, type ExerciseItem } from "./exercise-filte
 const item = (id: string, title: string, overrides: Partial<ExerciseItem> = {}): ExerciseItem => ({
   id,
   title,
-  type: "multiple_choice",
+  types: ["multiple_choice"],
+  questionCount: 1,
   statementPreview: null,
   subjects: [],
   skills: [],
   hoursLabel: null,
   imageCount: 0,
-  optionCount: 4,
   updatedAt: `2026-10-0${id}`,
   updatedLabel: "",
   ...overrides,
@@ -18,7 +18,7 @@ const item = (id: string, title: string, overrides: Partial<ExerciseItem> = {}):
 
 const items = [
   item("1", "Seno de 30°", { subjects: [{ id: "s1", name: "Trigonometria" }] }),
-  item("2", "Análise sintática", { type: "open_answer", statementPreview: "Identifique o sujeito" }),
+  item("2", "Análise sintática", { types: ["open_answer"], statementPreview: "Identifique o sujeito" }),
   item("3", "Cosseno", { subjects: [{ id: "s1", name: "Trigonometria" }] }),
 ];
 

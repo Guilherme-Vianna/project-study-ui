@@ -6,12 +6,12 @@ import { PageHeader } from "@/components/app/page-header";
 import { PageLoading } from "@/components/app/page-loading";
 import { CorrectnessBadge, ReviewBadge } from "@/components/attempts/attempt-parts";
 import { ReviewFilters } from "@/components/attempts/review-filters";
-import { listAttempts } from "@/lib/api/attempts";
+import { listAttempts, type Attempt } from "@/lib/api/attempts";
 import { listMyStudents, personName } from "@/lib/api/enrollments";
 import { listMyExercises } from "@/lib/api/exercises";
 import { REVIEWS_PATH } from "@/lib/auth/constants";
 import { reviewsHref, statusFromParam } from "@/lib/attempts/model";
-import { EXERCISE_TYPE_LABELS, formatHours } from "@/lib/exercises/model";
+import { formatHours } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { formatDateTime } from "@/lib/invites/validity";
 import { initialsOf } from "@/lib/people";
@@ -47,14 +47,15 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
   const status = statusFromParam(params.status);
   const studentId = param(params.aluno);
   const exerciseId = param(params.exercicio);
+  const packageId = param(params.pacote);
   const page = Math.max(1, Number.parseInt(param(params.pagina), 10) || 1);
-  const retry = reviewsHref({ status, studentId, exerciseId, page });
+  const retry = reviewsHref({ status, studentId, exerciseId, packageId, page });
 
   let data;
   try {
     data = await Promise.all([
       listAttempts(
-        { review_status: status === "all" ? undefined : status, student_id: studentId || undefined, exercise_id: exerciseId || undefined },
+        { review_status: status === "all" ? undefined : status, student_id: studentId || undefined, exercise_id: exerciseId || undefined, package_id: packageId || undefined },
         { offset: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE },
       ),
       listMyStudents(),
@@ -67,7 +68,7 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
   const studentNames = new Map(students.map((student) => [student.id, personName(student) || "Aluno sem nome"]));
   const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const pages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
-  const filtered = Boolean(studentId || exerciseId);
+  const filtered = Boolean(studentId || exerciseId || packageId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,6 +79,14 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
         students={[...studentNames].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))}
         exercises={exercises.map(({ id, title }) => ({ id, title })).sort((a, b) => a.title.localeCompare(b.title, "pt-BR"))}
       />
+      {packageId && (
+        <p className="text-sm text-muted">
+          Mostrando só respostas de um pacote.{" "}
+          <Link href={reviewsHref({ status, studentId, exerciseId })} className="font-medium text-primary underline-offset-4 hover:underline">
+            Ver todas
+          </Link>
+        </p>
+      )}
       <p aria-live="polite" className="text-sm text-muted">
         {result.total} {result.total === 1 ? "resposta" : "respostas"}
       </p>
@@ -113,9 +122,9 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-ink">{exercise?.title ?? "Exercício excluído"}</p>
                     <p className="text-sm text-muted">
-                      {name} · {EXERCISE_TYPE_LABELS[attempt.exercise_type]} · {formatDateTime(attempt.submitted_at)} · {formatHours(attempt.hours)}
+                      {name}{attempt.package_id ? " · Pacote" : ""} · {formatDateTime(attempt.submitted_at)} · {formatHours(attempt.hours)}
                     </p>
-                    {attempt.answer_text && <p className="mt-1 line-clamp-1 text-sm text-ink/70">{attempt.answer_text}</p>}
+                    {firstText(attempt) && <p className="mt-1 line-clamp-1 text-sm text-ink/70">{firstText(attempt)}</p>}
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <CorrectnessBadge isCorrect={attempt.is_correct} />
@@ -131,7 +140,7 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
       {pages > 1 && (
         <nav aria-label="Páginas" className="flex items-center justify-between gap-3">
           {page > 1 ? (
-            <Link href={reviewsHref({ status, studentId, exerciseId, page: page - 1 })} className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href={reviewsHref({ status, studentId, exerciseId, packageId, page: page - 1 })} className="font-medium text-primary underline-offset-4 hover:underline">
               ← Anteriores
             </Link>
           ) : (
@@ -141,7 +150,7 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
             Página {page} de {pages}
           </span>
           {page < pages ? (
-            <Link href={reviewsHref({ status, studentId, exerciseId, page: page + 1 })} className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href={reviewsHref({ status, studentId, exerciseId, packageId, page: page + 1 })} className="font-medium text-primary underline-offset-4 hover:underline">
               Próximas →
             </Link>
           ) : (
@@ -151,4 +160,8 @@ async function ReviewsContent({ searchParams }: Pick<PageProps<"/correcoes">, "s
       )}
     </div>
   );
+}
+
+function firstText(attempt: Attempt) {
+  return attempt.answers.find((answer) => answer.answer_text)?.answer_text ?? null;
 }

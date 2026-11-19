@@ -16,7 +16,7 @@ import { listMyExercises } from "@/lib/api/exercises";
 import { getAssignmentProgress, getPlan, listActiveAssignments, listMyPlans, type Progress } from "@/lib/api/plans";
 import { EXERCISES_PATH, PLANS_PATH, STUDENTS_PATH } from "@/lib/auth/constants";
 import { reviewsHref } from "@/lib/attempts/model";
-import { EXERCISE_TYPE_LABELS, formatHours } from "@/lib/exercises/model";
+import { exerciseKindLabel, formatHours, questionCountLabel, questionTypes } from "@/lib/exercises/model";
 import { requireTeacherAccount } from "@/lib/exercises/teacher-guard";
 import { formatDate } from "@/lib/invites/validity";
 import { initialsOf } from "@/lib/people";
@@ -197,7 +197,8 @@ async function PlanDetail({ params, searchParams }: PageProps<"/planos/[id]">) {
                       {exercise.title}
                     </Link>
                     <p className="text-xs text-muted">
-                      {EXERCISE_TYPE_LABELS[exercise.type]}
+                      {exerciseKindLabel(questionTypes(exercise.questions))}
+                      {exercise.questions.length > 1 ? ` · ${questionCountLabel(exercise.questions.length)}` : ""}
                       {exercise.estimated_hours ? ` · ${formatHours(exercise.estimated_hours)}` : ""}
                       {exercise.subjects.length > 0 && ` · ${exercise.subjects.map((subject) => subject.name).join(", ")}`}
                     </p>

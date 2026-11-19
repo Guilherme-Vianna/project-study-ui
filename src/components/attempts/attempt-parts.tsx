@@ -135,3 +135,69 @@ export function Feedback({ text }: { text: string }) {
     </div>
   );
 }
+
+type QuestionView = {
+  id: string;
+  position: number;
+  type: "multiple_choice" | "open_answer";
+  statement: string | null;
+  expected_answer?: string | null;
+  options: OptionView[];
+};
+
+type AnswerView = {
+  question_id: string;
+  position: number;
+  answer_text: string | null;
+  selected_option_ids: string[];
+  correct_option_ids: string[];
+  is_correct: boolean | null;
+};
+
+export function AttemptAnswers({
+  questions,
+  answers,
+  showExpected = false,
+}: {
+  questions: QuestionView[];
+  answers: AnswerView[];
+  showExpected?: boolean;
+}) {
+  const byQuestion = new Map(questions.map((question) => [question.id, question]));
+  const sorted = [...answers].sort((a, b) => a.position - b.position);
+  const several = sorted.length > 1;
+  return (
+    <ol className="flex flex-col gap-4">
+      {sorted.map((answer, index) => {
+        const question = byQuestion.get(answer.question_id);
+        return (
+          <li key={answer.question_id} className={several ? "flex flex-col gap-3 rounded-2xl border border-border p-4" : "flex flex-col gap-3"}>
+            {several && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-ink">Questão {index + 1}</span>
+                <CorrectnessBadge isCorrect={answer.is_correct} />
+              </div>
+            )}
+            {question?.statement && <p className="whitespace-pre-wrap text-sm text-ink">{question.statement}</p>}
+            {!question ? (
+              <p className="text-sm italic text-muted">Esta questão foi removida do exercício depois da resposta.</p>
+            ) : question.type === "multiple_choice" ? (
+              <AnsweredOptions options={question.options} selected={answer.selected_option_ids} correct={answer.correct_option_ids} />
+            ) : (
+              <div className="rounded-2xl bg-canvas p-3">
+                <p className="text-xs font-medium text-muted">Resposta</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{answer.answer_text}</p>
+              </div>
+            )}
+            {showExpected && question?.expected_answer && (
+              <div className="rounded-2xl border border-success/30 bg-success-soft/40 p-3">
+                <p className="text-xs font-medium text-success-strong">Resposta esperada</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{question.expected_answer}</p>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}

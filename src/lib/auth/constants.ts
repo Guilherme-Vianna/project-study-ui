@@ -11,6 +11,8 @@ export const SUBJECTS_PATH = "/assuntos";
 export const EXERCISES_PATH = "/exercicios";
 export const GENERATE_QUESTIONS_PATH = "/exercicios/gerar";
 export const PLANS_PATH = "/planos";
+export const PACKAGES_PATH = "/pacotes";
+export const MY_PACKAGES_PATH = "/meus-pacotes";
 export const REVIEWS_PATH = "/correcoes";
 export const SKILLS_PATH = "/habilidades";
 export const MY_PLAN_PATH = "/meu-plano";
@@ -26,6 +28,8 @@ export const PROTECTED_PATHS = [
   SUBJECTS_PATH,
   EXERCISES_PATH,
   PLANS_PATH,
+  PACKAGES_PATH,
+  MY_PACKAGES_PATH,
   REVIEWS_PATH,
   SKILLS_PATH,
   MY_PLAN_PATH,

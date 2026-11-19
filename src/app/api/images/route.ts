@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionToken, getSessionUser } from "@/lib/auth/session";
-import { IMAGE_TYPES, LIMITS } from "@/lib/exercises/model";
+import { IMAGE_TYPES, IMAGE_UPLOADS_ENABLED, LIMITS } from "@/lib/exercises/model";
 
 const messages: Record<number, string> = {
   401: "Sua sessão expirou. Entre de novo.",
@@ -16,6 +16,7 @@ function failure(status: number) {
 }
 
 export async function POST(request: Request) {
+  if (!IMAGE_UPLOADS_ENABLED) return failure(503);
   const token = await getSessionToken();
   if (!token || !(await getSessionUser())) return failure(401);
 

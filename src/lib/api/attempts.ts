@@ -5,16 +5,23 @@ import { apiFetch, fetchAll, queryString, type Page } from "./client";
 import type { ImageRead } from "./exercises";
 import type { SkillSummary } from "./skills";
 
+export type StudentQuestion = {
+  id: string;
+  position: number;
+  type: ExerciseType;
+  statement: string | null;
+  options: { id: string; position: number; text: string | null; image: ImageRead | null }[];
+};
+
 export type StudentExercise = {
   id: string;
-  type: ExerciseType;
   title: string;
   statement: string | null;
   estimated_hours: number | null;
   subjects: { id: string; name: string }[];
   skills: SkillSummary[];
   images: { placement: "statement" | "attachment"; position: number; image: ImageRead }[];
-  options: { id: string; position: number; text: string | null; image: ImageRead | null }[];
+  questions: StudentQuestion[];
 };
 
 export type StudentExerciseEntry = {
@@ -24,16 +31,25 @@ export type StudentExerciseEntry = {
   locked: boolean;
 };
 
-export type Attempt = {
-  id: string;
-  assignment_id: string;
-  student_id: string;
-  exercise_id: string;
-  exercise_type: ExerciseType;
+export type AttemptAnswer = {
+  question_id: string;
+  position: number;
+  question_type: ExerciseType;
   answer_text: string | null;
   selected_option_ids: string[];
   correct_option_ids: string[];
   is_correct: boolean | null;
+};
+
+export type Attempt = {
+  id: string;
+  assignment_id: string | null;
+  package_id: string | null;
+  student_id: string;
+  exercise_id: string;
+  single_attempt: boolean;
+  is_correct: boolean | null;
+  answers: AttemptAnswer[];
   hours: number;
   submitted_at: string;
   review_status: ReviewStatus;
@@ -43,6 +59,7 @@ export type Attempt = {
 
 export type AttemptFilters = {
   assignment_id?: string;
+  package_id?: string;
   student_id?: string;
   exercise_id?: string;
   review_status?: ReviewStatus;
